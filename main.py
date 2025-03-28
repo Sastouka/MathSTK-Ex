@@ -9,46 +9,42 @@ import io
 import socket
 import hashlib
 import json
+import logging
 import requests
 from datetime import datetime, timedelta
 from flask import Flask, request, render_template_string, send_file, url_for, session, redirect, flash, make_response
 from fpdf import FPDF
 
+# Configurez le logging pour la production
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # -----------------------------------------------------------------------------
 # Création de l'application Flask et configuration de la clé secrète
 # -----------------------------------------------------------------------------
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", secrets.token_hex(32))
+# Pour la production, la SECRET_KEY doit être définie dans l'environnement
+app.secret_key = os.environ.get("07ffda66dd44daf06c10bc672b47f0b0eaff1f2fade1034e3bfdb57c4dcb7cc8", secrets.token_hex(32))
 
 # -----------------------------------------------------------------------------
-# CONFIGURATION GOOGLE DRIVE AVEC UN COMPTE DE SERVICE (via variables d'environnement)
+# Chargement des informations sensibles depuis les variables d'environnement
 # -----------------------------------------------------------------------------
-GOOGLE_CREDENTIALS_INFO = {
-    "web": {
-        "client_id": os.environ.get("GOOGLE_CLIENT_ID", "your_google_client_id"),
-        "project_id": os.environ.get("GOOGLE_PROJECT_ID", "your_project_id"),
-        "auth_uri": os.environ.get("GOOGLE_AUTH_URI", "https://accounts.google.com/o/oauth2/auth"),
-        "token_uri": os.environ.get("GOOGLE_TOKEN_URI", "https://oauth2.googleapis.com/token"),
-        "auth_provider_x509_cert_url": os.environ.get("GOOGLE_AUTH_PROVIDER_CERT_URL", "https://www.googleapis.com/oauth2/v1/certs"),
-        "client_secret": os.environ.get("GOOGLE_CLIENT_SECRET", "your_google_client_secret"),
-        "redirect_uris": ["http://127.0.0.1:3000/login/google/authorized"]
-    }
-}
+# GOOGLE_CREDENTIALS_INFO et SERVICE_ACCOUNT_INFO doivent être fournis sous forme de JSON
+try:
+    GOOGLE_CREDENTIALS_INFO = json.loads(os.environ.get("GOOGLE_CREDENTIALS_INFO", "{}"))
+    SERVICE_ACCOUNT_INFO = json.loads(os.environ.get("SERVICE_ACCOUNT_INFO", "{}"))
+except Exception as e:
+    logger.error("Erreur lors du chargement des credentials Google: %s", e)
+    GOOGLE_CREDENTIALS_INFO = {}
+    SERVICE_ACCOUNT_INFO = {}
 
-SERVICE_ACCOUNT_INFO = {
-    "type": os.environ.get("GOOGLE_SERVICE_ACCOUNT_TYPE", "service_account"),
-    "project_id": os.environ.get("GOOGLE_PROJECT_ID", "your_project_id"),
-    "private_key_id": os.environ.get("GOOGLE_PRIVATE_KEY_ID", "your_private_key_id"),
-    "private_key": os.environ.get("GOOGLE_PRIVATE_KEY", "your_private_key").replace('\\n', '\n'),
-    "client_email": os.environ.get("GOOGLE_CLIENT_EMAIL", "your_client_email"),
-    "client_id": os.environ.get("GOOGLE_CLIENT_ID", "your_google_client_id"),
-    "auth_uri": os.environ.get("GOOGLE_AUTH_URI", "https://accounts.google.com/o/oauth2/auth"),
-    "token_uri": os.environ.get("GOOGLE_TOKEN_URI", "https://oauth2.googleapis.com/token"),
-    "auth_provider_x509_cert_url": os.environ.get("GOOGLE_AUTH_PROVIDER_CERT_URL", "https://www.googleapis.com/oauth2/v1/certs"),
-    "client_x509_cert_url": os.environ.get("GOOGLE_CLIENT_X509_CERT_URL", "your_client_x509_cert_url"),
-    "universe_domain": os.environ.get("GOOGLE_UNIVERSE_DOMAIN", "googleapis.com")
-}
+# Vérifier que les credentials minimum sont présents (sinon, on peut lever une exception ou loguer une alerte)
+if not GOOGLE_CREDENTIALS_INFO or not SERVICE_ACCOUNT_INFO:
+    logger.warning("Les informations de credentials Google ne sont pas correctement configurées.")
 
+# -----------------------------------------------------------------------------
+# Configuration et constantes
+# -----------------------------------------------------------------------------
 SCOPES = ['https://www.googleapis.com/auth/drive']
 
 def get_drive_service():
@@ -66,7 +62,7 @@ def create_folder(service, folder_name, parent_id=None):
     if parent_id:
         folder_metadata['parents'] = [parent_id]
     folder = service.files().create(body=folder_metadata, fields='id').execute()
-    print(f"Folder '{folder_name}' created with ID: {folder.get('id')}")
+    logger.info("Folder '%s' created with ID: %s", folder_name, folder.get('id'))
     return folder.get('id')
 
 def get_medicsas_folder_id(service):
@@ -74,10 +70,10 @@ def get_medicsas_folder_id(service):
     results = service.files().list(q=query, fields="files(id, name)").execute()
     items = results.get('files', [])
     if items:
-        print("Folder MEDICSAS_FILES already exists.")
+        logger.info("Folder MEDICSAS_FILES already exists.")
         return items[0]['id']
     else:
-        print("Folder MEDICSAS_FILES does not exist. It will be created.")
+        logger.info("Folder MEDICSAS_FILES does not exist. It will be created.")
         return create_folder(service, "MEDICSAS_FILES")
 
 def get_config_folder_id(service):
@@ -100,17 +96,17 @@ def get_user_drive_folder_id(service, user_email, parent_folder_id):
     results = service.files().list(q=query, fields="files(id, name)").execute()
     items = results.get('files', [])
     if items:
-        print(f"Folder for {user_email} already exists.")
+        logger.info("Folder for %s already exists.", user_email)
         return items[0]['id']
     else:
-        print(f"Folder for {user_email} does not exist. It will be created.")
+        logger.info("Folder for %s does not exist. It will be created.", user_email)
         folder_metadata = {
             'name': folder_name,
             'mimeType': 'application/vnd.google-apps.folder',
             'parents': [parent_folder_id]
         }
         folder = service.files().create(body=folder_metadata, fields='id').execute()
-        print(f"Folder '{folder_name}' created with ID: {folder.get('id')}")
+        logger.info("Folder '%s' created with ID: %s", folder_name, folder.get('id'))
         return folder.get('id')
 
 def upload_bytes_to_drive(file_bytes, filename, mime_type='application/octet-stream', folder_id=None):
@@ -122,7 +118,7 @@ def upload_bytes_to_drive(file_bytes, filename, mime_type='application/octet-str
     from googleapiclient.http import MediaIoBaseUpload
     media = MediaIoBaseUpload(stream, mimetype=mime_type)
     file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
-    print(f"File {filename} uploaded with ID {file.get('id')}")
+    logger.info("File %s uploaded with ID %s", filename, file.get('id'))
     return file.get('id')
 
 def update_file_in_drive(service, file_id, file_bytes, mime_type='application/octet-stream'):
@@ -159,7 +155,7 @@ def get_user_folder_id(user_email="default_user"):
     return get_user_drive_folder_id(service, user_email, medicsas_folder_id)
 
 # -----------------------------------------------------------------------------
-# Persistance des utilisateurs sur Google Drive (aucun stockage local)
+# Gestion de la persistance des utilisateurs sur Google Drive (pas de stockage local)
 # -----------------------------------------------------------------------------
 def load_users():
     try:
@@ -177,7 +173,7 @@ def load_users():
         else:
             return {}
     except Exception as e:
-        print("Error loading users:", e)
+        logger.error("Error loading users: %s", e)
         return {}
 
 def save_users():
@@ -198,7 +194,7 @@ def save_users():
         else:
             upload_bytes_to_drive(content_bytes, "users.json", mime_type="application/json", folder_id=config_folder_id)
     except Exception as e:
-        print("Error saving users:", e)
+        logger.error("Error saving users: %s", e)
 
 users = load_users()
 
@@ -210,9 +206,9 @@ latest_meta = None
 latest_result = None
 
 # -----------------------------------------------------------------------------
-# Définition du token pour la clé d'activation
+# Définition du token utilisé pour le calcul de la clé d'activation
 # -----------------------------------------------------------------------------
-ACTIVATION_TOKEN = "1r2h3y4f7e5dsf6"
+ACTIVATION_TOKEN = os.environ.get("ACTIVATION_TOKEN", "1r2h3y4f7e5dsf6")
 
 def generate_activation_key(email, plan, secret, date_str):
     data = f"{email.lower()}_{plan}_{secret}_{date_str}"
@@ -229,7 +225,7 @@ def generate_activation_key(email, plan, secret, date_str):
     return formatted_key
 
 # -----------------------------------------------------------------------------
-# Fonctions utilitaires supplémentaires
+# Fonctions utilitaires
 # -----------------------------------------------------------------------------
 def get_local_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -324,7 +320,7 @@ def draw_exercise_box(pdf, ex_num, ex, x, y, col_width, line_height, solution_te
         pdf.cell(content_width, line_height, f"{solution_text}", border=0, align="R", ln=1)
 
 # -----------------------------------------------------------------------------
-# Intégration du design, icônes et animations (HTML/CSS)
+# Design et intégration d'icônes et animations (HTML/CSS)
 # -----------------------------------------------------------------------------
 nav_html = """
 <nav class="navbar navbar-expand-lg navbar-light mac-navbar">
@@ -361,6 +357,7 @@ nav_html = """
     </div>
   </div>
 </nav>
+<!-- Navigation arrows container -->
 <div class="nav-arrows">
   <div class="arrow-left">
     <a href="javascript:history.back()"><i class="fas fa-arrow-circle-left"></i></a>
@@ -370,11 +367,29 @@ nav_html = """
   </div>
 </div>
 <style>
-  .theme-select { margin-left: 20px; display: flex; align-items: center; }
-  .theme-select select { -webkit-appearance: none; -moz-appearance: none; appearance: none; }
-  .nav-arrows { display: flex; justify-content: space-between; padding: 10px 20px; }
-  .nav-arrows .arrow-left, .nav-arrows .arrow-right { font-size: 2em; color: #333; }
-  .nav-arrows a { text-decoration: none; color: inherit; }
+  .theme-select {
+    margin-left: 20px;
+    display: flex;
+    align-items: center;
+  }
+  .theme-select select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+  }
+  .nav-arrows {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 20px;
+  }
+  .nav-arrows .arrow-left, .nav-arrows .arrow-right {
+    font-size: 2em;
+    color: #333;
+  }
+  .nav-arrows a {
+    text-decoration: none;
+    color: inherit;
+  }
 </style>
 <script>
 function changeTheme(theme) {
@@ -389,7 +404,13 @@ footer_html = """
   Access via local network: <span>{{ host_address }}</span>
 </div>
 <style>
-  .mac-footer { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(10px); color: #343a40; margin-top:20px; font-size: 0.9em; }
+  .mac-footer {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(10px);
+    color: #343a40;
+    margin-top:20px;
+    font-size: 0.9em;
+  }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 """
@@ -403,13 +424,33 @@ common_theme_css = """
   body.kid_friendly { background: linear-gradient(135deg, #FFEEAD, #FF6F69); color: #333; }
   h1, h2, h3, .navbar-brand { font-family: 'Fredoka One', cursive; }
   p, label, input, select, button { font-family: 'Poppins', sans-serif; }
-  @keyframes popIn { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
-  .btn { animation: popIn 0.5s ease-out; transition: transform 0.2s; }
-  .btn:hover { transform: scale(1.1); }
-  @keyframes bounceIn { 0% { transform: scale(0.5); opacity: 0; } 60% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(1); } }
-  h1 { animation: bounceIn 0.7s ease-out; }
-  .score-motivation { animation: pulse 1s infinite; }
-  @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+  @keyframes popIn {
+    0% { transform: scale(0.8); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .btn {
+    animation: popIn 0.5s ease-out;
+    transition: transform 0.2s;
+  }
+  .btn:hover {
+    transform: scale(1.1);
+  }
+  @keyframes bounceIn {
+    0% { transform: scale(0.5); opacity: 0; }
+    60% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(1); }
+  }
+  h1 {
+    animation: bounceIn 0.7s ease-out;
+  }
+  .score-motivation {
+    animation: pulse 1s infinite;
+  }
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
 """
@@ -420,9 +461,148 @@ meta_head = """
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 """
 
-# -----------------------------------------------------------------------------
-# Templates HTML complets
-# -----------------------------------------------------------------------------
+# Les templates HTML (selection_template, exercise_template, result_template, choose_plan_template, login_template, register_template, forgot_template, change_template, activation_template) restent inchangés.
+# Pour la concision, ils sont inclus tels quels ici (mais dans votre fichier, conservez-les intacts).
+
+nav_html = """
+<nav class="navbar navbar-expand-lg navbar-light mac-navbar">
+  <div class="container-fluid">
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" 
+            aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <a class="navbar-brand" href="/"><i class="fas fa-graduation-cap"></i> MathSTK-Ex</a>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav ms-auto">
+        {% if session.user %}
+          <li class="nav-item"><a class="nav-link" href="/"><i class="fas fa-home"></i> Home</a></li>
+          <li class="nav-item"><a class="nav-link" href="/activation"><i class="fas fa-unlock"></i> Activation</a></li>
+          <li class="nav-item"><a class="nav-link" href="/change_password"><i class="fas fa-key"></i> Change Password</a></li>
+          <li class="nav-item"><a class="nav-link" href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+        {% else %}
+          <li class="nav-item"><a class="nav-link" href="/login"><i class="fas fa-sign-in-alt"></i> Login</a></li>
+          <li class="nav-item"><a class="nav-link" href="/register"><i class="fas fa-user-plus"></i> Register</a></li>
+          <li class="nav-item"><a class="nav-link" href="/forgot_password"><i class="fas fa-unlock-alt"></i> Forgot Password</a></li>
+        {% endif %}
+        <li class="nav-item">
+          <div class="theme-select">
+            <select id="themeSelect" onchange="changeTheme(this.value)" class="form-select">
+              <option value="blue" {% if session.theme == 'blue' %}selected{% endif %}>Blue</option>
+              <option value="pink" {% if session.theme == 'pink' %}selected{% endif %}>Pink</option>
+              <option value="green" {% if session.theme == 'green' %}selected{% endif %}>Green</option>
+              <option value="yellow" {% if session.theme == 'yellow' %}selected{% endif %}>Yellow</option>
+              <option value="kid_friendly" {% if session.theme == 'kid_friendly' %}selected{% endif %}>Kid Friendly</option>
+            </select>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+<!-- Navigation arrows container -->
+<div class="nav-arrows">
+  <div class="arrow-left">
+    <a href="javascript:history.back()"><i class="fas fa-arrow-circle-left"></i></a>
+  </div>
+  <div class="arrow-right">
+    <a href="javascript:history.forward()"><i class="fas fa-arrow-circle-right"></i></a>
+  </div>
+</div>
+<style>
+  .theme-select {
+    margin-left: 20px;
+    display: flex;
+    align-items: center;
+  }
+  .theme-select select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+  }
+  .nav-arrows {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 20px;
+  }
+  .nav-arrows .arrow-left, .nav-arrows .arrow-right {
+    font-size: 2em;
+    color: #333;
+  }
+  .nav-arrows a {
+    text-decoration: none;
+    color: inherit;
+  }
+</style>
+<script>
+function changeTheme(theme) {
+    window.location.href = "/set_theme/" + theme;
+}
+</script>
+"""
+
+footer_html = """
+<div class="card-footer text-center footer mac-footer">
+  SASTOUKA DIGITAL © 2025 sastoukadigital@gmail.com • Whatsapp +212652084735<br>
+  Access via local network: <span>{{ host_address }}</span>
+</div>
+<style>
+  .mac-footer {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(10px);
+    color: #343a40;
+    margin-top:20px;
+    font-size: 0.9em;
+  }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+"""
+
+common_theme_css = """
+<style>
+  body.blue { background-color: #D0E7FF; color: #333; }
+  body.pink { background-color: #FFD1DC; color: #333; }
+  body.green { background-color: #D0FFD6; color: #333; }
+  body.yellow { background-color: #FFFAD1; color: #333; }
+  body.kid_friendly { background: linear-gradient(135deg, #FFEEAD, #FF6F69); color: #333; }
+  h1, h2, h3, .navbar-brand { font-family: 'Fredoka One', cursive; }
+  p, label, input, select, button { font-family: 'Poppins', sans-serif; }
+  @keyframes popIn {
+    0% { transform: scale(0.8); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .btn {
+    animation: popIn 0.5s ease-out;
+    transition: transform 0.2s;
+  }
+  .btn:hover {
+    transform: scale(1.1);
+  }
+  @keyframes bounceIn {
+    0% { transform: scale(0.5); opacity: 0; }
+    60% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(1); }
+  }
+  h1 {
+    animation: bounceIn 0.7s ease-out;
+  }
+  .score-motivation {
+    animation: pulse 1s infinite;
+  }
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+"""
+
+meta_head = """
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+"""
+
 selection_template = """
 <!doctype html>
 <html lang="en">
@@ -1018,7 +1198,6 @@ activation_template = """
   </body>
 </html>
 """
-
 # -----------------------------------------------------------------------------
 # Fonctions de gestion des plans et activation
 # -----------------------------------------------------------------------------
@@ -1237,11 +1416,8 @@ def update_activation_after_payment(plan):
         user_data["activation_id"] = activation_id
     save_users()
 
-# -----------------------------------------------------------------------------
-# Configuration PayPal (via variables d'environnement)
-# -----------------------------------------------------------------------------
-PAYPAL_CLIENT_ID = os.environ.get("PAYPAL_CLIENT_ID", "your_paypal_client_id")
-PAYPAL_SECRET = os.environ.get("PAYPAL_SECRET", "your_paypal_secret")
+PAYPAL_CLIENT_ID = os.environ.get("PAYPAL_CLIENT_ID")
+PAYPAL_SECRET = os.environ.get("PAYPAL_SECRET")
 PAYPAL_OAUTH_URL = "https://api-m.paypal.com/v1/oauth2/token"
 PAYPAL_ORDER_API = "https://api-m.paypal.com/v2/checkout/orders"
 
@@ -1422,6 +1598,7 @@ def generate_pdf_route():
                 x += col_width
         if idx != len(solution_categories) - 1:
             pdf.add_page()
+    # Générer le PDF en mémoire
     pdf_data = pdf.output(dest="S").encode("latin1")
     user_email = session.get("user", "default_user")
     folder_id = get_user_folder_id(user_email)
@@ -1627,6 +1804,6 @@ def root():
 # Lancement de l'application
 # -----------------------------------------------------------------------------
 if __name__ == '__main__':
+    # Pour la production, ne pas utiliser le serveur intégré.
     port = int(os.environ.get("PORT", 5500))
-    # En production, utilisez Gunicorn via un Procfile
     app.run(host="0.0.0.0", port=port, debug=False)
