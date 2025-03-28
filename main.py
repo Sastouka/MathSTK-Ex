@@ -459,149 +459,43 @@ meta_head = """
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<link rel="manifest" href="/static/manifest.json">
 """
 
-# Les templates HTML (selection_template, exercise_template, result_template, choose_plan_template, login_template, register_template, forgot_template, change_template, activation_template) restent inchangés.
-# Pour la concision, ils sont inclus tels quels ici (mais dans votre fichier, conservez-les intacts).
-
-nav_html = """
-<nav class="navbar navbar-expand-lg navbar-light mac-navbar">
-  <div class="container-fluid">
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" 
-            aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <a class="navbar-brand" href="/"><i class="fas fa-graduation-cap"></i> MathSTK-Ex</a>
-    <div class="collapse navbar-collapse" id="navbarNav">
-      <ul class="navbar-nav ms-auto">
-        {% if session.user %}
-          <li class="nav-item"><a class="nav-link" href="/"><i class="fas fa-home"></i> Home</a></li>
-          <li class="nav-item"><a class="nav-link" href="/activation"><i class="fas fa-unlock"></i> Activation</a></li>
-          <li class="nav-item"><a class="nav-link" href="/change_password"><i class="fas fa-key"></i> Change Password</a></li>
-          <li class="nav-item"><a class="nav-link" href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
-        {% else %}
-          <li class="nav-item"><a class="nav-link" href="/login"><i class="fas fa-sign-in-alt"></i> Login</a></li>
-          <li class="nav-item"><a class="nav-link" href="/register"><i class="fas fa-user-plus"></i> Register</a></li>
-          <li class="nav-item"><a class="nav-link" href="/forgot_password"><i class="fas fa-unlock-alt"></i> Forgot Password</a></li>
-        {% endif %}
-        <li class="nav-item">
-          <div class="theme-select">
-            <select id="themeSelect" onchange="changeTheme(this.value)" class="form-select">
-              <option value="blue" {% if session.theme == 'blue' %}selected{% endif %}>Blue</option>
-              <option value="pink" {% if session.theme == 'pink' %}selected{% endif %}>Pink</option>
-              <option value="green" {% if session.theme == 'green' %}selected{% endif %}>Green</option>
-              <option value="yellow" {% if session.theme == 'yellow' %}selected{% endif %}>Yellow</option>
-              <option value="kid_friendly" {% if session.theme == 'kid_friendly' %}selected{% endif %}>Kid Friendly</option>
-            </select>
-          </div>
-        </li>
-      </ul>
+# Page d'accueil (landing page) lorsque l'utilisateur n'est pas connecté
+landing_template = """
+<!doctype html>
+<html lang="fr">
+  <head>
+    """ + meta_head + """
+    <title>Bienvenue sur MathSTK-Ex</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    """ + common_theme_css + """
+    <style>
+      body { padding-top: 50px; }
+      .landing-container {
+        max-width: 500px;
+        margin: auto;
+        text-align: center;
+      }
+      .btn {
+        margin: 10px;
+      }
+    </style>
+  </head>
+  <body class="{{ session.theme if session.theme else 'blue' }}">
+    <div class="landing-container">
+      <h1>Bienvenue sur MathSTK-Ex</h1>
+      <p>Veuillez vous connecter ou créer un compte pour continuer.</p>
+      <a href="/login" class="btn btn-primary"><i class="fas fa-sign-in-alt"></i> Se connecter</a>
+      <a href="/register" class="btn btn-success"><i class="fas fa-user-plus"></i> S'enregistrer</a>
     </div>
-  </div>
-</nav>
-<!-- Navigation arrows container -->
-<div class="nav-arrows">
-  <div class="arrow-left">
-    <a href="javascript:history.back()"><i class="fas fa-arrow-circle-left"></i></a>
-  </div>
-  <div class="arrow-right">
-    <a href="javascript:history.forward()"><i class="fas fa-arrow-circle-right"></i></a>
-  </div>
-</div>
-<style>
-  .theme-select {
-    margin-left: 20px;
-    display: flex;
-    align-items: center;
-  }
-  .theme-select select {
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-  }
-  .nav-arrows {
-    display: flex;
-    justify-content: space-between;
-    padding: 10px 20px;
-  }
-  .nav-arrows .arrow-left, .nav-arrows .arrow-right {
-    font-size: 2em;
-    color: #333;
-  }
-  .nav-arrows a {
-    text-decoration: none;
-    color: inherit;
-  }
-</style>
-<script>
-function changeTheme(theme) {
-    window.location.href = "/set_theme/" + theme;
-}
-</script>
+  </body>
+</html>
 """
 
-footer_html = """
-<div class="card-footer text-center footer mac-footer">
-  SASTOUKA DIGITAL © 2025 sastoukadigital@gmail.com • Whatsapp +212652084735<br>
-  Access via local network: <span>{{ host_address }}</span>
-</div>
-<style>
-  .mac-footer {
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(10px);
-    color: #343a40;
-    margin-top:20px;
-    font-size: 0.9em;
-  }
-</style>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-"""
-
-common_theme_css = """
-<style>
-  body.blue { background-color: #D0E7FF; color: #333; }
-  body.pink { background-color: #FFD1DC; color: #333; }
-  body.green { background-color: #D0FFD6; color: #333; }
-  body.yellow { background-color: #FFFAD1; color: #333; }
-  body.kid_friendly { background: linear-gradient(135deg, #FFEEAD, #FF6F69); color: #333; }
-  h1, h2, h3, .navbar-brand { font-family: 'Fredoka One', cursive; }
-  p, label, input, select, button { font-family: 'Poppins', sans-serif; }
-  @keyframes popIn {
-    0% { transform: scale(0.8); opacity: 0; }
-    100% { transform: scale(1); opacity: 1; }
-  }
-  .btn {
-    animation: popIn 0.5s ease-out;
-    transition: transform 0.2s;
-  }
-  .btn:hover {
-    transform: scale(1.1);
-  }
-  @keyframes bounceIn {
-    0% { transform: scale(0.5); opacity: 0; }
-    60% { transform: scale(1.2); opacity: 1; }
-    100% { transform: scale(1); }
-  }
-  h1 {
-    animation: bounceIn 0.7s ease-out;
-  }
-  .score-motivation {
-    animation: pulse 1s infinite;
-  }
-  @keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
-  }
-</style>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
-"""
-
-meta_head = """
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-"""
+# Les autres templates restent inchangés (selection_template, exercise_template, result_template, choose_plan_template, login_template, register_template, forgot_template, change_template, activation_template).
+# Pour la concision, ils sont inclus tels quels ici :
 
 selection_template = """
 <!doctype html>
@@ -1262,10 +1156,13 @@ def set_theme(theme):
     flash(f"Theme changed to {theme}", "success")
     return redirect(request.referrer or "/")
 
+# -----------------------------------------------------------------------------
+# Route racine modifiée pour afficher une page d'accueil (landing page) si l'utilisateur n'est pas connecté
+# -----------------------------------------------------------------------------
 @app.route("/", methods=["GET"])
 def index_get():
     if "user" not in session:
-        return redirect("/login")
+        return render_template_string(landing_template, session=session)
     email = session["user"]
     user_data = users[email]
     if "plan" not in user_data:
@@ -1416,8 +1313,8 @@ def update_activation_after_payment(plan):
         user_data["activation_id"] = activation_id
     save_users()
 
-PAYPAL_CLIENT_ID = os.environ.get("PAYPAL_CLIENT_ID")
-PAYPAL_SECRET = os.environ.get("PAYPAL_SECRET")
+PAYPAL_CLIENT_ID = os.environ.get("PAYPAL_CLIENT_ID") or "AYPizBBNq1vp8WyvzvTHITGq9KoUUTXmzE0DBA7D_lWl5Ir6wEwVCB-gorvd1jgyX35ZqyURK6SMvps5"
+PAYPAL_SECRET = os.environ.get("PAYPAL_SECRET") or "EKSvwa_yK7ZYTuq45VP60dbRMzChbrko90EnhQsRzrMNZhqU2mHLti4_UTYV60ytY9uVZiAg7BoBlNno"
 PAYPAL_OAUTH_URL = "https://api-m.paypal.com/v1/oauth2/token"
 PAYPAL_ORDER_API = "https://api-m.paypal.com/v2/checkout/orders"
 
