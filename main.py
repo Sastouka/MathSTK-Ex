@@ -15,34 +15,37 @@ from datetime import datetime, timedelta
 from flask import Flask, request, render_template_string, send_file, url_for, session, redirect, flash, make_response
 from fpdf import FPDF
 
-# Configurez le logging pour la production
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# -------------------------------------------------------------------------------
+# CONFIGURATION GOOGLE DRIVE AVEC UN COMPTE DE SERVICE
+# -------------------------------------------------------------------------------
+# Données intégrées du fichier credentials.json (exemple pour OAuth, à utiliser si besoin)
+GOOGLE_CREDENTIALS_INFO = {
+    "web": {
+        "client_id": "876431230942-r2r8j8dkoucdv5be64vbh5ntc39trgdm.apps.googleusercontent.com",
+        "project_id": "medicsastouka",
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+        "client_secret": "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",
+        "redirect_uris": ["http://127.0.0.1:3000/login/google/authorized"]
+    }
+}
 
-# -----------------------------------------------------------------------------
-# Création de l'application Flask et configuration de la clé secrète
-# -----------------------------------------------------------------------------
-app = Flask(__name__)
-# Pour la production, la SECRET_KEY doit être définie dans l'environnement
-app.secret_key = os.environ.get("07ffda66dd44daf06c10bc672b47f0b0eaff1f2fade1034e3bfdb57c4dcb7cc8", secrets.token_hex(32))
+# Données intégrées du fichier service_account_key.json
+SERVICE_ACCOUNT_INFO = {
+    "type": "service_account",
+    "project_id": "medicsastouka",
+    "private_key_id": "2ba93ea14a19f316f4069ca91253c63c8cfeedb7",
+    "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQDfUbaB6qvpBaL4\n1SnpWQjkZtjyS5JvmEu5rq7gNvZDmfL1t8AFb5JsmKmyaAXzF/lgF13dGI8zDm8H\nokWrLfCCnrIjCprp81s2iKrzpg1PQbqdUNMfExbwdv7M/wz1Q3ntDExbegB4TBTc\nWoutGO6IremiG//qnLk6zjvgwqP+/h3c1eRIIqprfvGFEHteweViFrURS/YeN52H\n/ZK7SCzED3McztpVOH5XzXq0NGuQ1HFy0kq8/PgTq7jJla4HXaTRYgZ3hCpkzUN2\nQ0FibvcEMdUv49tjklEC1iTQBJBlZupkCkOtBCfiCBkT2/mOfIqfpJ/PKvd9Fxgw\nOsq5swvTAgMBAAECggEAbZNtpu+b7Jm8brZBe2MZjuC8IJ9eOe2Tcoe4/QFa8q6u\nXU0NJl2pjimWUpjiGnawAStV/i+XzCiP6EICR00iTyVJKRKCErs7DVYf86+Npk8N\nHzXScdPvFIx+191p4Up7oAnBybziUCScs8al9IhgOqaDFe0BNIA0Dxu0m8NFrs7c\n5NLIvIqN7ghZFnewQQJg35OTO76J/DwxYvzGBzbYvCBTUx2MWAAcIybWBsV8Y9sm\n/GTLAeNX3HjfAMHaeoppFwbQN+b2GC6tyx4gr73mOsKo51XRwPqkejg5zl5nKNVE\nG5z2skbBVAYCIjB4zCf30O+Rkf9nipOXnAW7+Qb1mQKBgQD1dr54DtjKF6Wp5RvZ\nbaTkdQVjxZkBGZKqJ9n9xFMqraAur8YP727OaO2kWFLdpXvq/SI4Bn2IJw2Y58u4\nO7E5KppChc9ozNS9gK/RU+ogi+d8neGYxl1Vmz9g8pezilDK/O5+smg9khmgabYb\nxAOUmdxuOH0YU0Tz4yrp5JLllQKBgQDo56JuqED6650qbvtOWrfWP2+ZutHW+bBM\nTD5KbS2UOhNGZ5kYTpYHEENEoQigGXF76kL5IQMtRtlfwW3HTPG1IKOlCLpKAt05\ns/p4Q/bIb/zvu5VEKP1vV0eBeVKcfV3oLb3JvuHpOS0trdAmqQ3pFDAxAMA/zzFD\n/yEvdOkBxwKBgQDj/sSR7XBt3iMROG5yucYEMbGs55fjjqZNCDER5e494QG8+6Vj\nncj1Tj8VfLiTiacdMLw8/8JP2b5mfT8bQ86sQ6b/DR0GweMEleg47dG1I14DwP4P\nkoiVAFuRKCPCL0I2GVNJOVtbfT3yYt400g9lUriNZEjFdGrCggmVMKtFNQKBgQCT\n/KqfOVWgmhlRHxebX9Uz0zbsLWKsABdfQ4rI67psVsJsl+MVKMn3TwQPFWtPnxsW\nq3FGrw0/tablSxif7Gogts6ETJlh8ZPz2EIsLLMgBNho034ywwDVwFV1FUvCl34V\nywquqBUPhf8I6Uo7ZmuqT+OXH20InnQlSnUhnF15fQKBgQCGrdDciOBrLb4RnXk4\niLnnxxofTs5NUSWw6fUodt8DjPbDiLP0MxqpXua+TC4Z0er0wEF1Qm0Uvhg56PJS\nRxE2t3eVvrAQA0fM14LX5CNbJv4cnAOlj+/kZaBey1M0qgA7SqVCD7RcVSteetBg\nY+GliixYrK2iPYPDXWXnEn7SuA==\n-----END PRIVATE KEY-----\n",
+    "client_email": "medicsastouka-service@medicsastouka.iam.gserviceaccount.com",
+    "client_id": "114340207807876222136",
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/medicsastouka-service%40medicsastouka.iam.gserviceaccount.com",
+    "universe_domain": "googleapis.com"
+}
 
-# -----------------------------------------------------------------------------
-# Chargement des informations sensibles depuis les variables d'environnement
-# -----------------------------------------------------------------------------
-try:
-    GOOGLE_CREDENTIALS_INFO = json.loads(os.environ.get("GOOGLE_CREDENTIALS_INFO", "{}"))
-    SERVICE_ACCOUNT_INFO = json.loads(os.environ.get("SERVICE_ACCOUNT_INFO", "{}"))
-except Exception as e:
-    logger.error("Erreur lors du chargement des credentials Google: %s", e)
-    GOOGLE_CREDENTIALS_INFO = {}
-    SERVICE_ACCOUNT_INFO = {}
-
-if not GOOGLE_CREDENTIALS_INFO or not SERVICE_ACCOUNT_INFO:
-    logger.warning("Les informations de credentials Google ne sont pas correctement configurées.")
-
-# -----------------------------------------------------------------------------
-# Configuration et constantes
-# -----------------------------------------------------------------------------
 SCOPES = ['https://www.googleapis.com/auth/drive']
 
 def get_drive_service():
@@ -60,7 +63,7 @@ def create_folder(service, folder_name, parent_id=None):
     if parent_id:
         folder_metadata['parents'] = [parent_id]
     folder = service.files().create(body=folder_metadata, fields='id').execute()
-    logger.info("Folder '%s' created with ID: %s", folder_name, folder.get('id'))
+    print(f"Folder '{folder_name}' created with ID: {folder.get('id')}")
     return folder.get('id')
 
 def get_medicsas_folder_id(service):
@@ -68,22 +71,11 @@ def get_medicsas_folder_id(service):
     results = service.files().list(q=query, fields="files(id, name)").execute()
     items = results.get('files', [])
     if items:
-        logger.info("Folder MEDICSAS_FILES already exists.")
+        print("Folder MEDICSAS_FILES already exists.")
         return items[0]['id']
     else:
-        logger.info("Folder MEDICSAS_FILES does not exist. It will be created.")
+        print("Folder MEDICSAS_FILES does not exist. It will be created.")
         return create_folder(service, "MEDICSAS_FILES")
-
-def get_config_folder_id(service):
-    parent_id = get_medicsas_folder_id(service)
-    query = ("mimeType='application/vnd.google-apps.folder' and name='Config' and "
-             f"'{parent_id}' in parents and trashed=false")
-    results = service.files().list(q=query, fields="files(id, name)").execute()
-    items = results.get('files', [])
-    if items:
-        return items[0]['id']
-    else:
-        return create_folder(service, "Config", parent_id)
 
 def get_user_drive_folder_id(service, user_email, parent_folder_id):
     folder_name = f"user_{user_email}"
@@ -94,17 +86,17 @@ def get_user_drive_folder_id(service, user_email, parent_folder_id):
     results = service.files().list(q=query, fields="files(id, name)").execute()
     items = results.get('files', [])
     if items:
-        logger.info("Folder for %s already exists.", user_email)
+        print(f"Folder for {user_email} already exists.")
         return items[0]['id']
     else:
-        logger.info("Folder for %s does not exist. It will be created.", user_email)
+        print(f"Folder for {user_email} does not exist. It will be created.")
         folder_metadata = {
             'name': folder_name,
             'mimeType': 'application/vnd.google-apps.folder',
             'parents': [parent_folder_id]
         }
         folder = service.files().create(body=folder_metadata, fields='id').execute()
-        logger.info("Folder '%s' created with ID: %s", folder_name, folder.get('id'))
+        print(f"Folder '{folder_name}' created with ID: {folder.get('id')}")
         return folder.get('id')
 
 def upload_bytes_to_drive(file_bytes, filename, mime_type='application/octet-stream', folder_id=None):
@@ -116,14 +108,7 @@ def upload_bytes_to_drive(file_bytes, filename, mime_type='application/octet-str
     from googleapiclient.http import MediaIoBaseUpload
     media = MediaIoBaseUpload(stream, mimetype=mime_type)
     file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
-    logger.info("File %s uploaded with ID %s", filename, file.get('id'))
-    return file.get('id')
-
-def update_file_in_drive(service, file_id, file_bytes, mime_type='application/octet-stream'):
-    stream = io.BytesIO(file_bytes)
-    from googleapiclient.http import MediaIoBaseUpload
-    media = MediaIoBaseUpload(stream, mimetype=mime_type)
-    file = service.files().update(fileId=file_id, media_body=media).execute()
+    print(f"File {filename} uploaded with ID {file.get('id')}")
     return file.get('id')
 
 def download_file_from_drive(file_id):
@@ -148,13 +133,35 @@ def get_drive_file_id(service, filename, folder_id):
         return None
 
 def get_user_folder_id(user_email="default_user"):
+    """
+    Returns the Google Drive folder ID associated with the user.
+    By default, if authentication is not set up, "default_user" is used.
+    """
     service = get_drive_service()
     medicsas_folder_id = get_medicsas_folder_id(service)
     return get_user_drive_folder_id(service, user_email, medicsas_folder_id)
 
-# -----------------------------------------------------------------------------
-# Gestion de la persistance des utilisateurs sur Google Drive (pas de stockage local)
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
+# Définition du dossier pour sauvegarder les PDFs générés
+# -------------------------------------------------------------------------------
+PDF_FOLDER = os.path.join(os.getcwd(), "pdf_files")
+if not os.path.exists(PDF_FOLDER):
+    os.makedirs(PDF_FOLDER)
+
+# -------------------------------------------------------------------------------
+# Configuration de l'application Flask et de la clé secrète
+# -------------------------------------------------------------------------------
+app = Flask(__name__)
+app.secret_key = os.environ.get("07ffda66dd44daf06c10bc672b47f0b0eaff1f2fade1034e3bfdb57c4dcb7cc8", secrets.token_hex(32))
+
+# -------------------------------------------------------------------------------
+# Chargement des informations sensibles depuis les variables d'environnement (si présentes)
+# -------------------------------------------------------------------------------
+# Ici, GOOGLE_CREDENTIALS_INFO et SERVICE_ACCOUNT_INFO sont déjà définis ci-dessus.
+
+# -------------------------------------------------------------------------------
+# Fonctions de gestion des utilisateurs stockés sur Google Drive (sans stockage local)
+# -------------------------------------------------------------------------------
 def load_users():
     try:
         service = get_drive_service()
@@ -194,48 +201,29 @@ def save_users():
     except Exception as e:
         logger.error("Error saving users: %s", e)
 
+def update_file_in_drive(service, file_id, file_bytes, mime_type='application/octet-stream'):
+    stream = io.BytesIO(file_bytes)
+    from googleapiclient.http import MediaIoBaseUpload
+    media = MediaIoBaseUpload(stream, mimetype=mime_type)
+    file = service.files().update(fileId=file_id, media_body=media).execute()
+    return file.get('id')
+
+def get_config_folder_id(service):
+    parent_id = get_medicsas_folder_id(service)
+    query = ("mimeType='application/vnd.google-apps.folder' and name='Config' and "
+             f"'{parent_id}' in parents and trashed=false")
+    results = service.files().list(q=query, fields="files(id, name)").execute()
+    items = results.get('files', [])
+    if items:
+        return items[0]['id']
+    else:
+        return create_folder(service, "Config", parent_id)
+
 users = load_users()
 
-# -----------------------------------------------------------------------------
-# Variables globales pour les exercices
-# -----------------------------------------------------------------------------
-latest_exercises = None
-latest_meta = None
-latest_result = None
-
-# -----------------------------------------------------------------------------
-# Définition du token utilisé pour le calcul de la clé d'activation
-# -----------------------------------------------------------------------------
-ACTIVATION_TOKEN = os.environ.get("ACTIVATION_TOKEN", "1r2h3y4f7e5dsf6")
-
-def generate_activation_key(email, plan, secret, date_str):
-    data = f"{email.lower()}_{plan}_{secret}_{date_str}"
-    hash_hex = hashlib.sha256(data.encode()).hexdigest()
-    num = int(hash_hex, 16)
-    alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    key_base36 = ""
-    while num > 0:
-        num, rem = divmod(num, 36)
-        key_base36 = alphabet[rem] + key_base36
-    key_base36 = key_base36.zfill(16)
-    activation_key = key_base36[:16]
-    formatted_key = "-".join([activation_key[i:i+4] for i in range(0, len(activation_key), 4)])
-    return formatted_key
-
-# -----------------------------------------------------------------------------
-# Fonctions utilitaires
-# -----------------------------------------------------------------------------
-def get_local_ip():
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        s.connect(("8.8.8.8", 80))
-        local_ip = s.getsockname()[0]
-    except Exception:
-        local_ip = "127.0.0.1"
-    finally:
-        s.close()
-    return local_ip
-
+# -------------------------------------------------------------------------------
+# Fonctions utilitaires et de génération d'exercices
+# -------------------------------------------------------------------------------
 def hash_password(password):
     return hashlib.sha256(password.encode('utf-8')).hexdigest()
 
@@ -317,9 +305,9 @@ def draw_exercise_box(pdf, ex_num, ex, x, y, col_width, line_height, solution_te
     else:
         pdf.cell(content_width, line_height, f"{solution_text}", border=0, align="R", ln=1)
 
-# -----------------------------------------------------------------------------
-# Design et intégration d'icônes et animations (HTML/CSS)
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
+# Templates HTML (navigation, footer, pages)
+# -------------------------------------------------------------------------------
 nav_html = """
 <nav class="navbar navbar-expand-lg navbar-light mac-navbar">
   <div class="container-fluid">
@@ -355,7 +343,6 @@ nav_html = """
     </div>
   </div>
 </nav>
-<!-- Navigation arrows container -->
 <div class="nav-arrows">
   <div class="arrow-left">
     <a href="javascript:history.back()"><i class="fas fa-arrow-circle-left"></i></a>
@@ -365,29 +352,11 @@ nav_html = """
   </div>
 </div>
 <style>
-  .theme-select {
-    margin-left: 20px;
-    display: flex;
-    align-items: center;
-  }
-  .theme-select select {
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-  }
-  .nav-arrows {
-    display: flex;
-    justify-content: space-between;
-    padding: 10px 20px;
-  }
-  .nav-arrows .arrow-left, .nav-arrows .arrow-right {
-    font-size: 2em;
-    color: #333;
-  }
-  .nav-arrows a {
-    text-decoration: none;
-    color: inherit;
-  }
+  .theme-select { margin-left: 20px; display: flex; align-items: center; }
+  .theme-select select { -webkit-appearance: none; -moz-appearance: none; appearance: none; }
+  .nav-arrows { display: flex; justify-content: space-between; padding: 10px 20px; }
+  .nav-arrows .arrow-left, .nav-arrows .arrow-right { font-size: 2em; color: #333; }
+  .nav-arrows a { text-decoration: none; color: inherit; }
 </style>
 <script>
 function changeTheme(theme) {
@@ -402,13 +371,7 @@ footer_html = """
   Access via local network: <span>{{ host_address }}</span>
 </div>
 <style>
-  .mac-footer {
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(10px);
-    color: #343a40;
-    margin-top:20px;
-    font-size: 0.9em;
-  }
+  .mac-footer { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(10px); color: #343a40; margin-top:20px; font-size: 0.9em; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 """
@@ -422,33 +385,13 @@ common_theme_css = """
   body.kid_friendly { background: linear-gradient(135deg, #FFEEAD, #FF6F69); color: #333; }
   h1, h2, h3, .navbar-brand { font-family: 'Fredoka One', cursive; }
   p, label, input, select, button { font-family: 'Poppins', sans-serif; }
-  @keyframes popIn {
-    0% { transform: scale(0.8); opacity: 0; }
-    100% { transform: scale(1); opacity: 1; }
-  }
-  .btn {
-    animation: popIn 0.5s ease-out;
-    transition: transform 0.2s;
-  }
-  .btn:hover {
-    transform: scale(1.1);
-  }
-  @keyframes bounceIn {
-    0% { transform: scale(0.5); opacity: 0; }
-    60% { transform: scale(1.2); opacity: 1; }
-    100% { transform: scale(1); }
-  }
-  h1 {
-    animation: bounceIn 0.7s ease-out;
-  }
-  .score-motivation {
-    animation: pulse 1s infinite;
-  }
-  @keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
-  }
+  @keyframes popIn { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+  .btn { animation: popIn 0.5s ease-out; transition: transform 0.2s; }
+  .btn:hover { transform: scale(1.1); }
+  @keyframes bounceIn { 0% { transform: scale(0.5); opacity: 0; } 60% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(1); } }
+  h1 { animation: bounceIn 0.7s ease-out; }
+  .score-motivation { animation: pulse 1s infinite; }
+  @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
 """
@@ -457,230 +400,10 @@ meta_head = """
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-<link rel="manifest" href="/static/manifest.json">
 """
 
-# -----------------------------------------------------------------------------
-# Landing page pour les utilisateurs non authentifiés
-# -----------------------------------------------------------------------------
-landing_template = """
-<!doctype html>
-<html lang="fr">
-  <head>
-    """ + meta_head + """
-    <title>Bienvenue sur MathSTK-Ex</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    """ + common_theme_css + """
-    <style>
-      body { padding-top: 50px; }
-      .landing-container {
-        max-width: 500px;
-        margin: auto;
-        text-align: center;
-      }
-      .btn {
-        margin: 10px;
-      }
-    </style>
-  </head>
-  <body class="{{ session.theme if session.theme else 'blue' }}">
-    <div class="landing-container">
-      <h1>Bienvenue sur MathSTK-Ex</h1>
-      <p>Veuillez vous connecter ou créer un compte pour continuer.</p>
-      <a href="/login" class="btn btn-primary"><i class="fas fa-sign-in-alt"></i> Se connecter</a>
-      <a href="/register" class="btn btn-success"><i class="fas fa-user-plus"></i> S'enregistrer</a>
-    </div>
-  </body>
-</html>
-"""
-
-# -----------------------------------------------------------------------------
-# Templates pour les autres pages
-# -----------------------------------------------------------------------------
-# Pour des raisons de concision, les templates register_template, forgot_template, change_template,
-# activation_template, selection_template, exercise_template, result_template et choose_plan_template
-# restent inchangés et doivent être insérés ici exactement comme dans vos versions précédentes.
-# Par exemple, le template login est défini ci-dessus pour inclure {{ nav_html|safe }}.
-
-# Exemple de login_template est déjà donné ci-dessus.
-# (Insérez ici vos autres templates tels que register_template, forgot_template, etc.)
-
-# Pour cet exemple, nous utilisons des placeholders pour ces templates.
-nav_html = """
-<nav class="navbar navbar-expand-lg navbar-light mac-navbar">
-  <div class="container-fluid">
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" 
-            aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <a class="navbar-brand" href="/"><i class="fas fa-graduation-cap"></i> MathSTK-Ex</a>
-    <div class="collapse navbar-collapse" id="navbarNav">
-      <ul class="navbar-nav ms-auto">
-        {% if session.user %}
-          <li class="nav-item"><a class="nav-link" href="/"><i class="fas fa-home"></i> Home</a></li>
-          <li class="nav-item"><a class="nav-link" href="/activation"><i class="fas fa-unlock"></i> Activation</a></li>
-          <li class="nav-item"><a class="nav-link" href="/change_password"><i class="fas fa-key"></i> Change Password</a></li>
-          <li class="nav-item"><a class="nav-link" href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
-        {% else %}
-          <li class="nav-item"><a class="nav-link" href="/login"><i class="fas fa-sign-in-alt"></i> Login</a></li>
-          <li class="nav-item"><a class="nav-link" href="/register"><i class="fas fa-user-plus"></i> Register</a></li>
-          <li class="nav-item"><a class="nav-link" href="/forgot_password"><i class="fas fa-unlock-alt"></i> Forgot Password</a></li>
-        {% endif %}
-        <li class="nav-item">
-          <div class="theme-select">
-            <select id="themeSelect" onchange="changeTheme(this.value)" class="form-select">
-              <option value="blue" {% if session.theme == 'blue' %}selected{% endif %}>Blue</option>
-              <option value="pink" {% if session.theme == 'pink' %}selected{% endif %}>Pink</option>
-              <option value="green" {% if session.theme == 'green' %}selected{% endif %}>Green</option>
-              <option value="yellow" {% if session.theme == 'yellow' %}selected{% endif %}>Yellow</option>
-              <option value="kid_friendly" {% if session.theme == 'kid_friendly' %}selected{% endif %}>Kid Friendly</option>
-            </select>
-          </div>
-        </li>
-      </ul>
-    </div>
-  </div>
-</nav>
-<!-- Navigation arrows container -->
-<div class="nav-arrows">
-  <div class="arrow-left">
-    <a href="javascript:history.back()"><i class="fas fa-arrow-circle-left"></i></a>
-  </div>
-  <div class="arrow-right">
-    <a href="javascript:history.forward()"><i class="fas fa-arrow-circle-right"></i></a>
-  </div>
-</div>
-<style>
-  .theme-select {
-    margin-left: 20px;
-    display: flex;
-    align-items: center;
-  }
-  .theme-select select {
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-  }
-  .nav-arrows {
-    display: flex;
-    justify-content: space-between;
-    padding: 10px 20px;
-  }
-  .nav-arrows .arrow-left, .nav-arrows .arrow-right {
-    font-size: 2em;
-    color: #333;
-  }
-  .nav-arrows a {
-    text-decoration: none;
-    color: inherit;
-  }
-</style>
-<script>
-function changeTheme(theme) {
-    window.location.href = "/set_theme/" + theme;
-}
-</script>
-"""
-
-footer_html = """
-<div class="card-footer text-center footer mac-footer">
-  SASTOUKA DIGITAL © 2025 sastoukadigital@gmail.com • Whatsapp +212652084735<br>
-  Access via local network: <span>{{ host_address }}</span>
-</div>
-<style>
-  .mac-footer {
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(10px);
-    color: #343a40;
-    margin-top:20px;
-    font-size: 0.9em;
-  }
-</style>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-"""
-
-common_theme_css = """
-<style>
-  body.blue { background-color: #D0E7FF; color: #333; }
-  body.pink { background-color: #FFD1DC; color: #333; }
-  body.green { background-color: #D0FFD6; color: #333; }
-  body.yellow { background-color: #FFFAD1; color: #333; }
-  body.kid_friendly { background: linear-gradient(135deg, #FFEEAD, #FF6F69); color: #333; }
-  h1, h2, h3, .navbar-brand { font-family: 'Fredoka One', cursive; }
-  p, label, input, select, button { font-family: 'Poppins', sans-serif; }
-  @keyframes popIn {
-    0% { transform: scale(0.8); opacity: 0; }
-    100% { transform: scale(1); opacity: 1; }
-  }
-  .btn {
-    animation: popIn 0.5s ease-out;
-    transition: transform 0.2s;
-  }
-  .btn:hover {
-    transform: scale(1.1);
-  }
-  @keyframes bounceIn {
-    0% { transform: scale(0.5); opacity: 0; }
-    60% { transform: scale(1.2); opacity: 1; }
-    100% { transform: scale(1); }
-  }
-  h1 {
-    animation: bounceIn 0.7s ease-out;
-  }
-  .score-motivation {
-    animation: pulse 1s infinite;
-  }
-  @keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
-  }
-</style>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
-"""
-
-meta_head = """
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-<link rel="manifest" href="/static/manifest.json">
-"""
-
-# Page d'accueil (landing page) lorsque l'utilisateur n'est pas connecté
-landing_template = """
-<!doctype html>
-<html lang="fr">
-  <head>
-    """ + meta_head + """
-    <title>Bienvenue sur MathSTK-Ex</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    """ + common_theme_css + """
-    <style>
-      body { padding-top: 50px; }
-      .landing-container {
-        max-width: 500px;
-        margin: auto;
-        text-align: center;
-      }
-      .btn {
-        margin: 10px;
-      }
-    </style>
-  </head>
-  <body class="{{ session.theme if session.theme else 'blue' }}">
-    <div class="landing-container">
-      <h1>Bienvenue sur MathSTK-Ex</h1>
-      <p>Veuillez vous connecter ou créer un compte pour continuer.</p>
-      <a href="/login" class="btn btn-primary"><i class="fas fa-sign-in-alt"></i> Se connecter</a>
-      <a href="/register" class="btn btn-success"><i class="fas fa-user-plus"></i> S'enregistrer</a>
-    </div>
-  </body>
-</html>
-"""
-
-# Les autres templates restent inchangés (selection_template, exercise_template, result_template, choose_plan_template, login_template, register_template, forgot_template, change_template, activation_template).
-# Pour la concision, ils sont inclus tels quels ici :
-
+# (Les templates pour la sélection, exercices, résultats, plan, login, register, etc. suivent)
+# Pour la concision, ils sont inclus tels quels dans le code d'origine :
 selection_template = """
 <!doctype html>
 <html lang="en">
@@ -1011,6 +734,9 @@ choose_plan_template = """
 </html>
 """
 
+# -----------------------------------------------------------------------------
+# Modification du template Login pour ajouter les boutons "S'enregistrer" et "Mot de passe oublié"
+# -----------------------------------------------------------------------------
 login_template = """
 <!doctype html>
 <html lang="en">
@@ -1022,8 +748,17 @@ login_template = """
     """ + common_theme_css + """
     <style>
       body { padding-left: 20px; padding-right: 20px; }
-      .login-container { max-width: 400px; margin: 50px auto; background: rgba(255,255,255,0.95); padding: 30px; border-radius: 15px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); backdrop-filter: blur(5px); }
-      @media (max-width: 576px) { .login-container { padding: 20px; margin: 30px auto; } }
+      .login-container {
+        max-width: 400px;
+        margin: 50px auto;
+        background: rgba(255,255,255,0.95);
+        padding: 30px;
+        border-radius: 15px;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+      }
+      .btn-secondary {
+        margin-top: 10px;
+      }
     </style>
   </head>
   <body class="{{ session.theme }}">
@@ -1045,6 +780,11 @@ login_template = """
         </div>
         <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-sign-in-alt"></i> Login</button>
       </form>
+      <!-- Boutons ajoutés sous le bouton Login -->
+      <div class="text-center mt-3">
+        <a href="/register" class="btn btn-secondary btn-block"><i class="fas fa-user-plus"></i> S'enregistrer</a>
+        <a href="/forgot_password" class="btn btn-secondary btn-block"><i class="fas fa-unlock-alt"></i> Mot de passe oublié</a>
+      </div>
     </div>
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -1275,11 +1015,27 @@ activation_template = """
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
   </body>
 </html>
-"""
+""" 
 
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # Fonctions de gestion des plans et activation
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
+def generate_activation_key(email, plan, secret, date_str):
+    data = f"{email.lower()}_{plan}_{secret}_{date_str}"
+    hash_hex = hashlib.sha256(data.encode()).hexdigest()
+    num = int(hash_hex, 16)
+    alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    key_base36 = ""
+    while num > 0:
+        num, rem = divmod(num, 36)
+        key_base36 = alphabet[rem] + key_base36
+    key_base36 = key_base36.zfill(16)
+    activation_key = key_base36[:16]
+    formatted_key = "-".join([activation_key[i:i+4] for i in range(0, len(activation_key), 4)])
+    return formatted_key
+
+ACTIVATION_TOKEN = os.environ.get("ACTIVATION_TOKEN", "1r2h3y4f7e5dsf6")
+
 def can_use_plan(email, level):
     user_data = users[email]
     usage_count = user_data.setdefault("usage_count", {"easy": 0, "intermediate": 0, "hard": 0, "very hard": 0, "expert": 0, "total": 0})
@@ -1302,9 +1058,20 @@ def track_usage(email, level):
         usage_count[level] += 1
     save_users()
 
-# -----------------------------------------------------------------------------
+def get_local_ip():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+    except Exception:
+        local_ip = "127.0.0.1"
+    finally:
+        s.close()
+    return local_ip
+
+# -------------------------------------------------------------------------------
 # Gestion des thèmes et cookies
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 @app.before_request
 def check_theme():
     theme = request.args.get('theme')
@@ -1341,13 +1108,17 @@ def set_theme(theme):
     flash(f"Theme changed to {theme}", "success")
     return redirect(request.referrer or "/")
 
-# -----------------------------------------------------------------------------
-# Route racine : landing page si non authentifié, sinon page de sélection
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
+# Routes principales et logique de l'application
+# -------------------------------------------------------------------------------
+latest_exercises = None
+latest_meta = None
+latest_result = None
+
 @app.route("/", methods=["GET"])
 def index_get():
     if "user" not in session:
-        return render_template_string(landing_template, session=session)
+        return redirect("/login")
     email = session["user"]
     user_data = users[email]
     if "plan" not in user_data:
@@ -1498,8 +1269,8 @@ def update_activation_after_payment(plan):
         user_data["activation_id"] = activation_id
     save_users()
 
-PAYPAL_CLIENT_ID = os.environ.get("PAYPAL_CLIENT_ID") or "AYPizBBNq1vp8WyvzvTHITGq9KoUUTXmzE0DBA7D_lWl5Ir6wEwVCB-gorvd1jgyX35ZqyURK6SMvps5"
-PAYPAL_SECRET = os.environ.get("PAYPAL_SECRET") or "EKSvwa_yK7ZYTuq45VP60dbRMzChbrko90EnhQsRzrMNZhqU2mHLti4_UTYV60ytY9uVZiAg7BoBlNno"
+PAYPAL_CLIENT_ID = os.environ.get("PAYPAL_CLIENT_ID")
+PAYPAL_SECRET = os.environ.get("PAYPAL_SECRET")
 PAYPAL_OAUTH_URL = "https://api-m.paypal.com/v1/oauth2/token"
 PAYPAL_ORDER_API = "https://api-m.paypal.com/v2/checkout/orders"
 
@@ -1595,100 +1366,99 @@ def paypal_cancel():
 @app.route("/generate_pdf")
 def generate_pdf_route():
     global latest_result, latest_exercises, latest_meta
-    try:
-        if not latest_result:
-            if not latest_exercises or not latest_meta:
-                return "No result to convert to PDF.", 400
-            solutions = {}
-            for op, ex_list in latest_exercises.items():
-                solutions[op] = []
-                for ex in ex_list:
-                    question_text = f"{ex['a']:3d} {ex['op']} {ex['b']:3d}"
-                    solutions[op].append({"question": question_text, "solution": ex["result"]})
-            latest_result = {
-                "feedback": {},
-                "solutions": solutions,
-                "score": 0,
-                "theme": latest_meta["theme"],
-                "level": latest_meta["level"],
-                "selected_category": latest_meta["selected_category"],
-                "exercises": latest_exercises,
-                "pdf_columns": latest_meta["pdf_columns"]
-            }
-        pdf_columns = latest_meta.get("pdf_columns", 3)
-        pdf = FPDF(orientation="P", unit="mm", format="A5")
-        pdf.set_margins(10, 10, 10)
-        pdf.set_auto_page_break(auto=True, margin=10)
-        pdf.add_page()
-        pdf.set_y(pdf.h / 2 - 20)
-        pdf.set_font("Arial", "B", 28)
-        pdf.cell(0, 10, "Math Exercises", ln=True, align="C")
-        pdf.ln(10)
-        pdf.set_font("Arial", "I", 20)
-        pdf.cell(0, 10, "by SASTOUKA DIGITAL", ln=True, align="C")
-        pdf.add_page()
-        pdf.set_font("Arial", "B", 18)
-        pdf.cell(0, 10, "Questions", ln=True, align="C")
-        pdf.ln(5)
-        col_width = (pdf.w - pdf.l_margin - pdf.r_margin) / pdf_columns
-        line_height = 6
-        box_height = 3 * line_height
-        exercise_categories = list(latest_result["exercises"].items())
-        for idx, (cat, ex_list) in enumerate(exercise_categories):
-            pdf.set_font("Arial", "B", 16)
-            pdf.cell(0, 10, cat.capitalize(), ln=True)
-            y = pdf.get_y()
-            x = pdf.l_margin
-            col = 0
-            for i, ex in enumerate(ex_list):
-                draw_exercise_box(pdf, i+1, ex, x, y, col_width, line_height, solution_text=None)
-                col += 1
-                if col == pdf_columns:
-                    col = 0
-                    x = pdf.l_margin
-                    y += box_height + 4
-                    if y + box_height > pdf.h - pdf.b_margin:
-                        pdf.add_page()
-                        y = pdf.t_margin
-                else:
-                    x += col_width
-            if idx != len(exercise_categories) - 1:
-                pdf.add_page()
-        pdf.add_page()
-        pdf.set_font("Arial", "B", 18)
-        pdf.cell(0, 10, "Solutions", ln=True, align="C")
-        pdf.ln(5)
-        solution_categories = list(latest_result["solutions"].items())
-        for idx, (cat, sol_list) in enumerate(solution_categories):
-            pdf.set_font("Arial", "B", 16)
-            pdf.cell(0, 10, cat.capitalize(), ln=True)
-            y = pdf.get_y()
-            x = pdf.l_margin
-            col = 0
-            for i, sol in enumerate(sol_list):
-                parts = sol["question"].split()
-                ex = {"a": parts[0], "op": parts[1], "b": parts[2]}
-                draw_exercise_box(pdf, i+1, ex, x, y, col_width, line_height, solution_text=sol["solution"])
-                col += 1
-                if col == pdf_columns:
-                    col = 0
-                    x = pdf.l_margin
-                    y += box_height + 4
-                    if y + box_height > pdf.h - pdf.b_margin:
-                        pdf.add_page()
-                        y = pdf.t_margin
-                else:
-                    x += col_width
-            if idx != len(solution_categories) - 1:
-                pdf.add_page()
-        pdf_data = pdf.output(dest="S").encode("latin1")
-        user_email = session.get("user", "default_user")
-        folder_id = get_user_folder_id(user_email)
-        upload_bytes_to_drive(pdf_data, "exercise_results.pdf", mime_type="application/pdf", folder_id=folder_id)
-        return send_file(io.BytesIO(pdf_data), mimetype='application/pdf', as_attachment=True, download_name="exercise_results.pdf")
-    except Exception as e:
-        logger.error("Error generating PDF: %s", e)
-        return f"An error occurred during PDF generation: {e}", 500
+    if not latest_result:
+        if not latest_exercises or not latest_meta:
+            return "No result to convert to PDF.", 400
+        solutions = {}
+        for op, ex_list in latest_exercises.items():
+            solutions[op] = []
+            for ex in ex_list:
+                question_text = f"{ex['a']:3d} {ex['op']} {ex['b']:3d}"
+                solutions[op].append({"question": question_text, "solution": ex["result"]})
+        latest_result = {
+            "feedback": {},
+            "solutions": solutions,
+            "score": 0,
+            "theme": latest_meta["theme"],
+            "level": latest_meta["level"],
+            "selected_category": latest_meta["selected_category"],
+            "exercises": latest_exercises,
+            "pdf_columns": latest_meta["pdf_columns"]
+        }
+    pdf_columns = latest_meta.get("pdf_columns", 3)
+    pdf = FPDF(orientation="P", unit="mm", format="A5")
+    pdf.set_margins(10, 10, 10)
+    pdf.set_auto_page_break(auto=True, margin=10)
+    pdf.add_page()
+    pdf.set_y(pdf.h / 2 - 20)
+    pdf.set_font("Arial", "B", 28)
+    pdf.cell(0, 10, "Math Exercises", ln=True, align="C")
+    pdf.ln(10)
+    pdf.set_font("Arial", "I", 20)
+    pdf.cell(0, 10, "by SASTOUKA DIGITAL", ln=True, align="C")
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 18)
+    pdf.cell(0, 10, "Questions", ln=True, align="C")
+    pdf.ln(5)
+    col_width = (pdf.w - pdf.l_margin - pdf.r_margin) / pdf_columns
+    line_height = 6
+    box_height = 3 * line_height
+    exercise_categories = list(latest_result["exercises"].items())
+    for idx, (cat, ex_list) in enumerate(exercise_categories):
+        pdf.set_font("Arial", "B", 16)
+        pdf.cell(0, 10, cat.capitalize(), ln=True)
+        y = pdf.get_y()
+        x = pdf.l_margin
+        col = 0
+        for i, ex in enumerate(ex_list):
+            draw_exercise_box(pdf, i+1, ex, x, y, col_width, line_height, solution_text=None)
+            col += 1
+            if col == pdf_columns:
+                col = 0
+                x = pdf.l_margin
+                y += box_height + 4
+                if y + box_height > pdf.h - pdf.b_margin:
+                    pdf.add_page()
+                    y = pdf.t_margin
+            else:
+                x += col_width
+        if idx != len(exercise_categories) - 1:
+            pdf.add_page()
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 18)
+    pdf.cell(0, 10, "Solutions", ln=True, align="C")
+    pdf.ln(5)
+    solution_categories = list(latest_result["solutions"].items())
+    for idx, (cat, sol_list) in enumerate(solution_categories):
+        pdf.set_font("Arial", "B", 16)
+        pdf.cell(0, 10, cat.capitalize(), ln=True)
+        y = pdf.get_y()
+        x = pdf.l_margin
+        col = 0
+        for i, sol in enumerate(sol_list):
+            parts = sol["question"].split()
+            ex = {"a": parts[0], "op": parts[1], "b": parts[2]}
+            draw_exercise_box(pdf, i+1, ex, x, y, col_width, line_height, solution_text=sol["solution"])
+            col += 1
+            if col == pdf_columns:
+                col = 0
+                x = pdf.l_margin
+                y += box_height + 4
+                if y + box_height > pdf.h - pdf.b_margin:
+                    pdf.add_page()
+                    y = pdf.t_margin
+            else:
+                x += col_width
+        if idx != len(solution_categories) - 1:
+            pdf.add_page()
+    pdf_file_path = os.path.join(PDF_FOLDER, "exercise_results.pdf")
+    pdf.output(pdf_file_path)
+    with open(pdf_file_path, "rb") as f:
+        file_bytes = f.read()
+    user_email = session.get("user", "default_user")
+    folder_id = get_user_folder_id(user_email)
+    upload_bytes_to_drive(file_bytes, "exercise_results.pdf", mime_type="application/pdf", folder_id=folder_id)
+    return send_file(pdf_file_path, mimetype='application/pdf', as_attachment=True, download_name="exercise_results.pdf")
 
 @app.route("/answers", methods=["POST"])
 def answers_route():
@@ -1790,8 +1560,7 @@ def login_route():
                 save_users()
                 return resp
         flash("Invalid credentials.", "danger")
-    # Ici, le template de login inclut {{ nav_html|safe }} pour afficher la barre de navigation.
-    return render_template_string(login_template, session=session, nav_html=nav_html)
+    return render_template_string(login_template, session=session)
 
 @app.route("/logout")
 def logout_route():
@@ -1818,10 +1587,10 @@ def register_route():
         mother = request.form.get("mother_name")
         if email in users:
             flash("This email is already used.", "warning")
-            return render_template_string(register_template, session=session, nav_html=nav_html)
+            return render_template_string(register_template, session=session)
         if pw != cpw:
             flash("Passwords do not match.", "warning")
-            return render_template_string(register_template, session=session, nav_html=nav_html)
+            return render_template_string(register_template, session=session)
         users[email] = {"password": hash_password(pw),
                         "birth_date": birth_date,
                         "birth_place": birth_place,
@@ -1830,7 +1599,7 @@ def register_route():
         save_users()
         flash("Account created successfully!", "success")
         return redirect("/login")
-    return render_template_string(register_template, session=session, nav_html=nav_html)
+    return render_template_string(register_template, session=session)
 
 @app.route("/forgot_password", methods=["GET", "POST"])
 def forgot_password_route():
@@ -1842,10 +1611,10 @@ def forgot_password_route():
         conf_pw = request.form.get("confirm_password")
         if email not in users:
             flash("Email not found.", "danger")
-            return render_template_string(forgot_template, session=session, nav_html=nav_html)
+            return render_template_string(forgot_template, session=session)
         if new_pw != conf_pw:
             flash("Passwords do not match.", "warning")
-            return render_template_string(forgot_template, session=session, nav_html=nav_html)
+            return render_template_string(forgot_template, session=session)
         user_data = users[email]
         if user_data["father_name"] == father and user_data["mother_name"] == mother:
             user_data["password"] = hash_password(new_pw)
@@ -1854,7 +1623,7 @@ def forgot_password_route():
             return redirect("/login")
         else:
             flash("Incorrect verification information.", "danger")
-    return render_template_string(forgot_template, session=session, nav_html=nav_html)
+    return render_template_string(forgot_template, session=session)
 
 @app.route("/change_password", methods=["GET", "POST"])
 def change_password_route():
@@ -1869,15 +1638,15 @@ def change_password_route():
         user_data = users[email]
         if user_data["password"] != hash_password(old_pw):
             flash("Incorrect old password.", "danger")
-            return render_template_string(change_template, session=session, nav_html=nav_html)
+            return render_template_string(change_template, session=session)
         if new_pw != conf_pw:
             flash("New passwords do not match.", "warning")
-            return render_template_string(change_template, session=session, nav_html=nav_html)
+            return render_template_string(change_template, session=session)
         user_data["password"] = hash_password(new_pw)
         save_users()
         flash("Password changed successfully!", "success")
         return redirect("/")
-    return render_template_string(change_template, session=session, nav_html=nav_html)
+    return render_template_string(change_template, session=session)
 
 @app.route("/logout")
 def root():
@@ -1886,9 +1655,9 @@ def root():
     else:
         return redirect("/")
 
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 # Lancement de l'application
-# -----------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5500))
     app.run(host="0.0.0.0", port=port, debug=False)
