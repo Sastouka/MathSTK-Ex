@@ -29,7 +29,6 @@ app.secret_key = os.environ.get("07ffda66dd44daf06c10bc672b47f0b0eaff1f2fade1034
 # -----------------------------------------------------------------------------
 # Chargement des informations sensibles depuis les variables d'environnement
 # -----------------------------------------------------------------------------
-# GOOGLE_CREDENTIALS_INFO et SERVICE_ACCOUNT_INFO doivent être fournis sous forme de JSON
 try:
     GOOGLE_CREDENTIALS_INFO = json.loads(os.environ.get("GOOGLE_CREDENTIALS_INFO", "{}"))
     SERVICE_ACCOUNT_INFO = json.loads(os.environ.get("SERVICE_ACCOUNT_INFO", "{}"))
@@ -38,7 +37,6 @@ except Exception as e:
     GOOGLE_CREDENTIALS_INFO = {}
     SERVICE_ACCOUNT_INFO = {}
 
-# Vérifier que les credentials minimum sont présents (sinon, on peut lever une exception ou loguer une alerte)
 if not GOOGLE_CREDENTIALS_INFO or not SERVICE_ACCOUNT_INFO:
     logger.warning("Les informations de credentials Google ne sont pas correctement configurées.")
 
@@ -322,6 +320,192 @@ def draw_exercise_box(pdf, ex_num, ex, x, y, col_width, line_height, solution_te
 # -----------------------------------------------------------------------------
 # Design et intégration d'icônes et animations (HTML/CSS)
 # -----------------------------------------------------------------------------
+nav_html = """
+<nav class="navbar navbar-expand-lg navbar-light mac-navbar">
+  <div class="container-fluid">
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" 
+            aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <a class="navbar-brand" href="/"><i class="fas fa-graduation-cap"></i> MathSTK-Ex</a>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav ms-auto">
+        {% if session.user %}
+          <li class="nav-item"><a class="nav-link" href="/"><i class="fas fa-home"></i> Home</a></li>
+          <li class="nav-item"><a class="nav-link" href="/activation"><i class="fas fa-unlock"></i> Activation</a></li>
+          <li class="nav-item"><a class="nav-link" href="/change_password"><i class="fas fa-key"></i> Change Password</a></li>
+          <li class="nav-item"><a class="nav-link" href="/logout"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+        {% else %}
+          <li class="nav-item"><a class="nav-link" href="/login"><i class="fas fa-sign-in-alt"></i> Login</a></li>
+          <li class="nav-item"><a class="nav-link" href="/register"><i class="fas fa-user-plus"></i> Register</a></li>
+          <li class="nav-item"><a class="nav-link" href="/forgot_password"><i class="fas fa-unlock-alt"></i> Forgot Password</a></li>
+        {% endif %}
+        <li class="nav-item">
+          <div class="theme-select">
+            <select id="themeSelect" onchange="changeTheme(this.value)" class="form-select">
+              <option value="blue" {% if session.theme == 'blue' %}selected{% endif %}>Blue</option>
+              <option value="pink" {% if session.theme == 'pink' %}selected{% endif %}>Pink</option>
+              <option value="green" {% if session.theme == 'green' %}selected{% endif %}>Green</option>
+              <option value="yellow" {% if session.theme == 'yellow' %}selected{% endif %}>Yellow</option>
+              <option value="kid_friendly" {% if session.theme == 'kid_friendly' %}selected{% endif %}>Kid Friendly</option>
+            </select>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+<!-- Navigation arrows container -->
+<div class="nav-arrows">
+  <div class="arrow-left">
+    <a href="javascript:history.back()"><i class="fas fa-arrow-circle-left"></i></a>
+  </div>
+  <div class="arrow-right">
+    <a href="javascript:history.forward()"><i class="fas fa-arrow-circle-right"></i></a>
+  </div>
+</div>
+<style>
+  .theme-select {
+    margin-left: 20px;
+    display: flex;
+    align-items: center;
+  }
+  .theme-select select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+  }
+  .nav-arrows {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 20px;
+  }
+  .nav-arrows .arrow-left, .nav-arrows .arrow-right {
+    font-size: 2em;
+    color: #333;
+  }
+  .nav-arrows a {
+    text-decoration: none;
+    color: inherit;
+  }
+</style>
+<script>
+function changeTheme(theme) {
+    window.location.href = "/set_theme/" + theme;
+}
+</script>
+"""
+
+footer_html = """
+<div class="card-footer text-center footer mac-footer">
+  SASTOUKA DIGITAL © 2025 sastoukadigital@gmail.com • Whatsapp +212652084735<br>
+  Access via local network: <span>{{ host_address }}</span>
+</div>
+<style>
+  .mac-footer {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(10px);
+    color: #343a40;
+    margin-top:20px;
+    font-size: 0.9em;
+  }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+"""
+
+common_theme_css = """
+<style>
+  body.blue { background-color: #D0E7FF; color: #333; }
+  body.pink { background-color: #FFD1DC; color: #333; }
+  body.green { background-color: #D0FFD6; color: #333; }
+  body.yellow { background-color: #FFFAD1; color: #333; }
+  body.kid_friendly { background: linear-gradient(135deg, #FFEEAD, #FF6F69); color: #333; }
+  h1, h2, h3, .navbar-brand { font-family: 'Fredoka One', cursive; }
+  p, label, input, select, button { font-family: 'Poppins', sans-serif; }
+  @keyframes popIn {
+    0% { transform: scale(0.8); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .btn {
+    animation: popIn 0.5s ease-out;
+    transition: transform 0.2s;
+  }
+  .btn:hover {
+    transform: scale(1.1);
+  }
+  @keyframes bounceIn {
+    0% { transform: scale(0.5); opacity: 0; }
+    60% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(1); }
+  }
+  h1 {
+    animation: bounceIn 0.7s ease-out;
+  }
+  .score-motivation {
+    animation: pulse 1s infinite;
+  }
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+"""
+
+meta_head = """
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<link rel="manifest" href="/static/manifest.json">
+"""
+
+# -----------------------------------------------------------------------------
+# Landing page pour les utilisateurs non authentifiés
+# -----------------------------------------------------------------------------
+landing_template = """
+<!doctype html>
+<html lang="fr">
+  <head>
+    """ + meta_head + """
+    <title>Bienvenue sur MathSTK-Ex</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    """ + common_theme_css + """
+    <style>
+      body { padding-top: 50px; }
+      .landing-container {
+        max-width: 500px;
+        margin: auto;
+        text-align: center;
+      }
+      .btn {
+        margin: 10px;
+      }
+    </style>
+  </head>
+  <body class="{{ session.theme if session.theme else 'blue' }}">
+    <div class="landing-container">
+      <h1>Bienvenue sur MathSTK-Ex</h1>
+      <p>Veuillez vous connecter ou créer un compte pour continuer.</p>
+      <a href="/login" class="btn btn-primary"><i class="fas fa-sign-in-alt"></i> Se connecter</a>
+      <a href="/register" class="btn btn-success"><i class="fas fa-user-plus"></i> S'enregistrer</a>
+    </div>
+  </body>
+</html>
+"""
+
+# -----------------------------------------------------------------------------
+# Templates pour les autres pages
+# -----------------------------------------------------------------------------
+# Pour des raisons de concision, les templates register_template, forgot_template, change_template,
+# activation_template, selection_template, exercise_template, result_template et choose_plan_template
+# restent inchangés et doivent être insérés ici exactement comme dans vos versions précédentes.
+# Par exemple, le template login est défini ci-dessus pour inclure {{ nav_html|safe }}.
+
+# Exemple de login_template est déjà donné ci-dessus.
+# (Insérez ici vos autres templates tels que register_template, forgot_template, etc.)
+
+# Pour cet exemple, nous utilisons des placeholders pour ces templates.
 nav_html = """
 <nav class="navbar navbar-expand-lg navbar-light mac-navbar">
   <div class="container-fluid">
@@ -1092,6 +1276,7 @@ activation_template = """
   </body>
 </html>
 """
+
 # -----------------------------------------------------------------------------
 # Fonctions de gestion des plans et activation
 # -----------------------------------------------------------------------------
@@ -1157,7 +1342,7 @@ def set_theme(theme):
     return redirect(request.referrer or "/")
 
 # -----------------------------------------------------------------------------
-# Route racine modifiée pour afficher une page d'accueil (landing page) si l'utilisateur n'est pas connecté
+# Route racine : landing page si non authentifié, sinon page de sélection
 # -----------------------------------------------------------------------------
 @app.route("/", methods=["GET"])
 def index_get():
@@ -1410,97 +1595,100 @@ def paypal_cancel():
 @app.route("/generate_pdf")
 def generate_pdf_route():
     global latest_result, latest_exercises, latest_meta
-    if not latest_result:
-        if not latest_exercises or not latest_meta:
-            return "No result to convert to PDF.", 400
-        solutions = {}
-        for op, ex_list in latest_exercises.items():
-            solutions[op] = []
-            for ex in ex_list:
-                question_text = f"{ex['a']:3d} {ex['op']} {ex['b']:3d}"
-                solutions[op].append({"question": question_text, "solution": ex["result"]})
-        latest_result = {
-            "feedback": {},
-            "solutions": solutions,
-            "score": 0,
-            "theme": latest_meta["theme"],
-            "level": latest_meta["level"],
-            "selected_category": latest_meta["selected_category"],
-            "exercises": latest_exercises,
-            "pdf_columns": latest_meta["pdf_columns"]
-        }
-    pdf_columns = latest_meta.get("pdf_columns", 3)
-    pdf = FPDF(orientation="P", unit="mm", format="A5")
-    pdf.set_margins(10, 10, 10)
-    pdf.set_auto_page_break(auto=True, margin=10)
-    pdf.add_page()
-    pdf.set_y(pdf.h / 2 - 20)
-    pdf.set_font("Arial", "B", 28)
-    pdf.cell(0, 10, "Math Exercises", ln=True, align="C")
-    pdf.ln(10)
-    pdf.set_font("Arial", "I", 20)
-    pdf.cell(0, 10, "by SASTOUKA DIGITAL", ln=True, align="C")
-    pdf.add_page()
-    pdf.set_font("Arial", "B", 18)
-    pdf.cell(0, 10, "Questions", ln=True, align="C")
-    pdf.ln(5)
-    col_width = (pdf.w - pdf.l_margin - pdf.r_margin) / pdf_columns
-    line_height = 6
-    box_height = 3 * line_height
-    exercise_categories = list(latest_result["exercises"].items())
-    for idx, (cat, ex_list) in enumerate(exercise_categories):
-        pdf.set_font("Arial", "B", 16)
-        pdf.cell(0, 10, cat.capitalize(), ln=True)
-        y = pdf.get_y()
-        x = pdf.l_margin
-        col = 0
-        for i, ex in enumerate(ex_list):
-            draw_exercise_box(pdf, i+1, ex, x, y, col_width, line_height, solution_text=None)
-            col += 1
-            if col == pdf_columns:
-                col = 0
-                x = pdf.l_margin
-                y += box_height + 4
-                if y + box_height > pdf.h - pdf.b_margin:
-                    pdf.add_page()
-                    y = pdf.t_margin
-            else:
-                x += col_width
-        if idx != len(exercise_categories) - 1:
-            pdf.add_page()
-    pdf.add_page()
-    pdf.set_font("Arial", "B", 18)
-    pdf.cell(0, 10, "Solutions", ln=True, align="C")
-    pdf.ln(5)
-    solution_categories = list(latest_result["solutions"].items())
-    for idx, (cat, sol_list) in enumerate(solution_categories):
-        pdf.set_font("Arial", "B", 16)
-        pdf.cell(0, 10, cat.capitalize(), ln=True)
-        y = pdf.get_y()
-        x = pdf.l_margin
-        col = 0
-        for i, sol in enumerate(sol_list):
-            parts = sol["question"].split()
-            ex = {"a": parts[0], "op": parts[1], "b": parts[2]}
-            draw_exercise_box(pdf, i+1, ex, x, y, col_width, line_height, solution_text=sol["solution"])
-            col += 1
-            if col == pdf_columns:
-                col = 0
-                x = pdf.l_margin
-                y += box_height + 4
-                if y + box_height > pdf.h - pdf.b_margin:
-                    pdf.add_page()
-                    y = pdf.t_margin
-            else:
-                x += col_width
-        if idx != len(solution_categories) - 1:
-            pdf.add_page()
-    # Générer le PDF en mémoire
-    pdf_data = pdf.output(dest="S").encode("latin1")
-    user_email = session.get("user", "default_user")
-    folder_id = get_user_folder_id(user_email)
-    upload_bytes_to_drive(pdf_data, "exercise_results.pdf", mime_type="application/pdf", folder_id=folder_id)
-    return send_file(io.BytesIO(pdf_data), mimetype='application/pdf', as_attachment=True, download_name="exercise_results.pdf")
+    try:
+        if not latest_result:
+            if not latest_exercises or not latest_meta:
+                return "No result to convert to PDF.", 400
+            solutions = {}
+            for op, ex_list in latest_exercises.items():
+                solutions[op] = []
+                for ex in ex_list:
+                    question_text = f"{ex['a']:3d} {ex['op']} {ex['b']:3d}"
+                    solutions[op].append({"question": question_text, "solution": ex["result"]})
+            latest_result = {
+                "feedback": {},
+                "solutions": solutions,
+                "score": 0,
+                "theme": latest_meta["theme"],
+                "level": latest_meta["level"],
+                "selected_category": latest_meta["selected_category"],
+                "exercises": latest_exercises,
+                "pdf_columns": latest_meta["pdf_columns"]
+            }
+        pdf_columns = latest_meta.get("pdf_columns", 3)
+        pdf = FPDF(orientation="P", unit="mm", format="A5")
+        pdf.set_margins(10, 10, 10)
+        pdf.set_auto_page_break(auto=True, margin=10)
+        pdf.add_page()
+        pdf.set_y(pdf.h / 2 - 20)
+        pdf.set_font("Arial", "B", 28)
+        pdf.cell(0, 10, "Math Exercises", ln=True, align="C")
+        pdf.ln(10)
+        pdf.set_font("Arial", "I", 20)
+        pdf.cell(0, 10, "by SASTOUKA DIGITAL", ln=True, align="C")
+        pdf.add_page()
+        pdf.set_font("Arial", "B", 18)
+        pdf.cell(0, 10, "Questions", ln=True, align="C")
+        pdf.ln(5)
+        col_width = (pdf.w - pdf.l_margin - pdf.r_margin) / pdf_columns
+        line_height = 6
+        box_height = 3 * line_height
+        exercise_categories = list(latest_result["exercises"].items())
+        for idx, (cat, ex_list) in enumerate(exercise_categories):
+            pdf.set_font("Arial", "B", 16)
+            pdf.cell(0, 10, cat.capitalize(), ln=True)
+            y = pdf.get_y()
+            x = pdf.l_margin
+            col = 0
+            for i, ex in enumerate(ex_list):
+                draw_exercise_box(pdf, i+1, ex, x, y, col_width, line_height, solution_text=None)
+                col += 1
+                if col == pdf_columns:
+                    col = 0
+                    x = pdf.l_margin
+                    y += box_height + 4
+                    if y + box_height > pdf.h - pdf.b_margin:
+                        pdf.add_page()
+                        y = pdf.t_margin
+                else:
+                    x += col_width
+            if idx != len(exercise_categories) - 1:
+                pdf.add_page()
+        pdf.add_page()
+        pdf.set_font("Arial", "B", 18)
+        pdf.cell(0, 10, "Solutions", ln=True, align="C")
+        pdf.ln(5)
+        solution_categories = list(latest_result["solutions"].items())
+        for idx, (cat, sol_list) in enumerate(solution_categories):
+            pdf.set_font("Arial", "B", 16)
+            pdf.cell(0, 10, cat.capitalize(), ln=True)
+            y = pdf.get_y()
+            x = pdf.l_margin
+            col = 0
+            for i, sol in enumerate(sol_list):
+                parts = sol["question"].split()
+                ex = {"a": parts[0], "op": parts[1], "b": parts[2]}
+                draw_exercise_box(pdf, i+1, ex, x, y, col_width, line_height, solution_text=sol["solution"])
+                col += 1
+                if col == pdf_columns:
+                    col = 0
+                    x = pdf.l_margin
+                    y += box_height + 4
+                    if y + box_height > pdf.h - pdf.b_margin:
+                        pdf.add_page()
+                        y = pdf.t_margin
+                else:
+                    x += col_width
+            if idx != len(solution_categories) - 1:
+                pdf.add_page()
+        pdf_data = pdf.output(dest="S").encode("latin1")
+        user_email = session.get("user", "default_user")
+        folder_id = get_user_folder_id(user_email)
+        upload_bytes_to_drive(pdf_data, "exercise_results.pdf", mime_type="application/pdf", folder_id=folder_id)
+        return send_file(io.BytesIO(pdf_data), mimetype='application/pdf', as_attachment=True, download_name="exercise_results.pdf")
+    except Exception as e:
+        logger.error("Error generating PDF: %s", e)
+        return f"An error occurred during PDF generation: {e}", 500
 
 @app.route("/answers", methods=["POST"])
 def answers_route():
@@ -1602,7 +1790,8 @@ def login_route():
                 save_users()
                 return resp
         flash("Invalid credentials.", "danger")
-    return render_template_string(login_template, session=session)
+    # Ici, le template de login inclut {{ nav_html|safe }} pour afficher la barre de navigation.
+    return render_template_string(login_template, session=session, nav_html=nav_html)
 
 @app.route("/logout")
 def logout_route():
@@ -1629,10 +1818,10 @@ def register_route():
         mother = request.form.get("mother_name")
         if email in users:
             flash("This email is already used.", "warning")
-            return render_template_string(register_template, session=session)
+            return render_template_string(register_template, session=session, nav_html=nav_html)
         if pw != cpw:
             flash("Passwords do not match.", "warning")
-            return render_template_string(register_template, session=session)
+            return render_template_string(register_template, session=session, nav_html=nav_html)
         users[email] = {"password": hash_password(pw),
                         "birth_date": birth_date,
                         "birth_place": birth_place,
@@ -1641,7 +1830,7 @@ def register_route():
         save_users()
         flash("Account created successfully!", "success")
         return redirect("/login")
-    return render_template_string(register_template, session=session)
+    return render_template_string(register_template, session=session, nav_html=nav_html)
 
 @app.route("/forgot_password", methods=["GET", "POST"])
 def forgot_password_route():
@@ -1653,10 +1842,10 @@ def forgot_password_route():
         conf_pw = request.form.get("confirm_password")
         if email not in users:
             flash("Email not found.", "danger")
-            return render_template_string(forgot_template, session=session)
+            return render_template_string(forgot_template, session=session, nav_html=nav_html)
         if new_pw != conf_pw:
             flash("Passwords do not match.", "warning")
-            return render_template_string(forgot_template, session=session)
+            return render_template_string(forgot_template, session=session, nav_html=nav_html)
         user_data = users[email]
         if user_data["father_name"] == father and user_data["mother_name"] == mother:
             user_data["password"] = hash_password(new_pw)
@@ -1665,7 +1854,7 @@ def forgot_password_route():
             return redirect("/login")
         else:
             flash("Incorrect verification information.", "danger")
-    return render_template_string(forgot_template, session=session)
+    return render_template_string(forgot_template, session=session, nav_html=nav_html)
 
 @app.route("/change_password", methods=["GET", "POST"])
 def change_password_route():
@@ -1680,15 +1869,15 @@ def change_password_route():
         user_data = users[email]
         if user_data["password"] != hash_password(old_pw):
             flash("Incorrect old password.", "danger")
-            return render_template_string(change_template, session=session)
+            return render_template_string(change_template, session=session, nav_html=nav_html)
         if new_pw != conf_pw:
             flash("New passwords do not match.", "warning")
-            return render_template_string(change_template, session=session)
+            return render_template_string(change_template, session=session, nav_html=nav_html)
         user_data["password"] = hash_password(new_pw)
         save_users()
         flash("Password changed successfully!", "success")
         return redirect("/")
-    return render_template_string(change_template, session=session)
+    return render_template_string(change_template, session=session, nav_html=nav_html)
 
 @app.route("/logout")
 def root():
@@ -1701,6 +1890,5 @@ def root():
 # Lancement de l'application
 # -----------------------------------------------------------------------------
 if __name__ == '__main__':
-    # Pour la production, ne pas utiliser le serveur intégré.
     port = int(os.environ.get("PORT", 5500))
     app.run(host="0.0.0.0", port=port, debug=False)
