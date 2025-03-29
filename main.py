@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 # -------------------------------------------------------------------------------
 # CONFIGURATION GOOGLE DRIVE AVEC UN COMPTE DE SERVICE
 # -------------------------------------------------------------------------------
+# Données intégrées du fichier credentials.json (exemple pour OAuth, à utiliser si besoin)
 GOOGLE_CREDENTIALS_INFO = {
     "web": {
         "client_id": "876431230942-r2r8j8dkoucdv5be64vbh5ntc39trgdm.apps.googleusercontent.com",
@@ -36,17 +37,17 @@ GOOGLE_CREDENTIALS_INFO = {
 
 # Données intégrées du fichier service_account_key.json
 SERVICE_ACCOUNT_INFO = {
-    "type": "service_account",
-    "project_id": "medicsastouka",
-    "private_key_id": "2ba93ea14a19f316f4069ca91253c63c8cfeedb7",
-    "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQDfUbaB6qvpBaL4\n1SnpWQjkZtjyS5JvmEu5rq7gNvZDmfL1t8AFb5JsmKmyaAXzF/lgF13dGI8zDm8H\nokWrLfCCnrIjCprp81s2iKrzpg1PQbqdUNMfExbwdv7M/wz1Q3ntDExbegB4TBTc\nWoutGO6IremiG//qnLk6zjvgwqP+/h3c1eRIIqprfvGFEHteweViFrURS/YeN52H\n/ZK7SCzED3McztpVOH5XzXq0NGuQ1HFy0kq8/PgTq7jJla4HXaTRYgZ3hCpkzUN2\nQ0FibvcEMdUv49tjklEC1iTQBJBlZupkCkOtBCfiCBkT2/mOfIqfpJ/PKvd9Fxgw\nOsq5swvTAgMBAAECggEAbZNtpu+b7Jm8brZBe2MZjuC8IJ9eOe2Tcoe4/QFa8q6u\nXU0NJl2pjimWUpjiGnawAStV/i+XzCiP6EICR00iTyVJKRKCErs7DVYf86+Npk8N\nHzXScdPvFIx+191p4Up7oAnBybziUCScs8al9IhgOqaDFe0BNIA0Dxu0m8NFrs7c\n5NLIvIqN7ghZFnewQQJg35OTO76J/DwxYvzGBzbYvCBTUx2MWAAcIybWBsV8Y9sm\n/GTLAeNX3HjfAMHaeoppFwbQN+b2GC6tyx4gr73mOsKo51XRwPqkejg5zl5nKNVE\nG5z2skbBVAYCIjB4zCf30O+Rkf9nipOXnAW7+Qb1mQKBgQD1dr54DtjKF6Wp5RvZ\nbaTkdQVjxZkBGZKqJ9n9xFMqraAur8YP727OaO2kWFLdpXvq/SI4Bn2IJw2Y58u4\nO7E5KppChc9ozNS9gK/RU+ogi+d8neGYxl1Vmz9g8pezilDK/O5+smg9khmgabYb\nxAOUmdxuOH0YU0Tz4yrp5JLllQKBgQDo56JuqED6650qbvtOWrfWP2+ZutHW+bBM\nTD5KbS2UOhNGZ5kYTpYHEENEoQigGXF76kL5IQMtRtlfwW3HTPG1IKOlCLpKAt05\ns/p4Q/bIb/zvu5VEKP1vV0eBeVKcfV3oLb3JvuHpOS0trdAmqQ3pFDAxAMA/zzFD\n/yEvdOkBxwKBgQDj/sSR7XBt3iMROG5yucYEMbGs55fjjqZNCDER5e494QG8+6Vj\nncj1Tj8VfLiTiacdMLw8/8JP2b5mfT8bQ86sQ6b/DR0GweMEleg47dG1I14DwP4P\nkoiVAFuRKCPCL0I2GVNJOVtbfT3yYt400g9lUriNZEjFdGrCggmVMKtFNQKBgQCT\n/KqfOVWgmhlRHxebX9Uz0zbsLWKsABdfQ4rI67psVsJsl+MVKMn3TwQPFWtPnxsW\nq3FGrw0/tablSxif7Gogts6ETJlh8ZPz2EIsLLMgBNho034ywwDVwFV1FUvCl34V\nywquqBUPhf8I6Uo7ZmuqT+OXH20InnQlSnUhnF15fQKBgQCGrdDciOBrLb4RnXk4\niLnnxxofTs5NUSWw6fUodt8DjPbDiLP0MxqpXua+TC4Z0er0wEF1Qm0Uvhg56PJS\nRxE2t3eVvrAQA0fM14LX5CNbJv4cnAOlj+/kZaBey1M0qgA7SqVCD7RcVSteetBg\nY+GliixYrK2iPYPDXWXnEn7SuA==\n-----END PRIVATE KEY-----\n",
-    "client_email": "medicsastouka-service@medicsastouka.iam.gserviceaccount.com",
-    "client_id": "114340207807876222136",
-    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-    "token_uri": "https://oauth2.googleapis.com/token",
-    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-    "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/medicsastouka-service%40medicsastouka.iam.gserviceaccount.com",
-    "universe_domain": "googleapis.com"
+  "type": "service_account",
+  "project_id": "mathstk-ex",
+  "private_key_id": "348dfb98f67cf17a8142bb571c67f71bd97471c8",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDbG3gLGjSUbBnc\nDoy2NqEe9+lWmRGeSGy9WtMbPJiPcxHwlHWwmppVVjjp1qRO/N7WAzHsuW6Jv7sI\ng8RQE21YDycnr5d6AL29jM91njsA6h2RuMgJK7S2Mn/QqroNnS+29r/XSJfYaeSx\nqy2K2vA2K5H6y6DsXHesuhvoWOvoJvW4hTmUwqRRV1aE0jfGQUDxQcmmNJN98dqh\n3eo452qdMgMKrzdecT2uQ+kecoT+V9FYGhRW1FatF1MGFFWVWeA2Ojkp6odI9sCP\ntQn8/6XmlhUurrwPB6ywARzCgEu3NBN+HF45TOKUX++eeExg9KCLYl5yt99z5vuj\nUBPRAj1dAgMBAAECggEAEVvGASUrQhClZNPJ7ealPE7vj3LdhzYdgqE8hSrMuwf8\nBXIRjTNWY56K2usXGy3j7pMUDw6AICLOi8W6qrhl9YUaePBWQRi9b36wHJVI/zvM\n/2ji/3z/r7PlAJBXYJw8dejrDmsmd9iogQiQJAZ6jjlvSC3+kAiMWk9n8MVYsox8\nBzwj+nsbfQ/O26K6wGCJGctLtEvBcFeb4XNKdkhUCuAz0EHyZ5Fen4NkAzEBSuUo\nLqVYlaNgpBuwd5y7efrnZw4CuS/J60sP4Kgyu1vDjvfWzzKjvVM8YJMBmaCOlG3U\nKrxgn4WR9slTnq02OVwVS84/z8RLpdI4ZV4krAzPIQKBgQD7AW3eL/Br6UDt41KZ\n2JHRH9+SRaETI25rVm3kL/QfWemA0IIg59455L/xEeIfBQs/Hc1hc/tfJr5dOS9g\nI1NRE4FZX36WS1FAAsE4pzzPFFOJJez7qZuOaIeigKCHbZ497BXaiQJhsMCNTxry\nIDgnicS6Nce/7NuFJIXewLt/PQKBgQDfd45z9FiiN3+aQX7oVG7HAud2GAdaunfr\nR4znmOnHQ+EXu5QqefzNqdHDmZ1nTk8YJNVv6LZyf5SWdfyzAwLe/yb8LES61BML\nBw34wqx8tjGMJst54eJA1/7j+6WI2ZZlg/7pbY//I8NsSTwAhmo02LKrN9eFB7gO\nMl9CzmeYoQKBgQChh47rwJAI8eet72+Vv/A+0zMuT47T4SZK/yjjAxUoI9WH5ycH\nBBBX02TOP4L0EWvmZ0hnYZsv5Z/2IDnjtXgFofbIzBKLp9aWye8MhVs1rFAB3509\nay3HHG/E3N/xp1KBaO+7XhZhRbz0cybVEHTyxM8MQlXUphmy+gkIi6FdxQKBgGIN\nP4A5crqax26T1m9yvLit2YnDuVZiA0RFPNpSCiHY8udK8xRAOmCzZssAmEQ/5Ayf\n/NcBsSxENppeYubZJ2VZZ222ruGbNE/eZI8GPFDsUIlCbH2qU3BIVhsKy/NkJc2d\nQTiDTm+Q7aqR57YDRI6zlpHyCqrgXC4+g/X4QxSBAoGAL3LS/uo77xEQmWVG3dFS\nkg1TBy5zLC8dY7BquMmAnOcj2vwo599H+jvsGcgZXSVBmQATcWBNgpVtIk8+z9Pz\nGKu4sFK3nhNNNDKdntIEmllefQBAHOAlXS1Y3F2b3D7NjwHV7RN4t1/SPZ0YS/wL\n6kzC0Ayb30wPBlPRFMGknM0=\n-----END PRIVATE KEY-----\n",
+  "client_email": "mathstk-ex@mathstk-ex.iam.gserviceaccount.com",
+  "client_id": "114993129161824871154",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/mathstk-ex%40mathstk-ex.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
 }
 
 SCOPES = ['https://www.googleapis.com/auth/drive']
