@@ -14,224 +14,72 @@ import requests
 from datetime import datetime, timedelta
 from flask import Flask, request, render_template_string, send_file, url_for, session, redirect, flash, make_response
 from fpdf import FPDF
+from flask_sqlalchemy import SQLAlchemy
 
-# Configuration du logger
+# ---------------------------
+# Configuration et Logger
+# ---------------------------
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# -------------------------------------------------------------------------------
-# CONFIGURATION GOOGLE DRIVE AVEC UN COMPTE DE SERVICE
-# -------------------------------------------------------------------------------
-# Données intégrées du fichier credentials.json (exemple pour OAuth, à utiliser si besoin)
-GOOGLE_CREDENTIALS_INFO = {
-    "web": {
-        "client_id": "876431230942-r2r8j8dkoucdv5be64vbh5ntc39trgdm.apps.googleusercontent.com",
-        "project_id": "medicsastouka",
-        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-        "token_uri": "https://oauth2.googleapis.com/token",
-        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-        "client_secret": "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",
-        "redirect_uris": ["http://127.0.0.1:3000/login/google/authorized"]
-    }
-}
-
-# Données intégrées du fichier service_account_key.json
-SERVICE_ACCOUNT_INFO = {
-  "type": "service_account",
-  "project_id": "mathstk-ex",
-  "private_key_id": "348dfb98f67cf17a8142bb571c67f71bd97471c8",
-  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDbG3gLGjSUbBnc\nDoy2NqEe9+lWmRGeSGy9WtMbPJiPcxHwlHWwmppVVjjp1qRO/N7WAzHsuW6Jv7sI\ng8RQE21YDycnr5d6AL29jM91njsA6h2RuMgJK7S2Mn/QqroNnS+29r/XSJfYaeSx\nqy2K2vA2K5H6y6DsXHesuhvoWOvoJvW4hTmUwqRRV1aE0jfGQUDxQcmmNJN98dqh\n3eo452qdMgMKrzdecT2uQ+kecoT+V9FYGhRW1FatF1MGFFWVWeA2Ojkp6odI9sCP\ntQn8/6XmlhUurrwPB6ywARzCgEu3NBN+HF45TOKUX++eeExg9KCLYl5yt99z5vuj\nUBPRAj1dAgMBAAECggEAEVvGASUrQhClZNPJ7ealPE7vj3LdhzYdgqE8hSrMuwf8\nBXIRjTNWY56K2usXGy3j7pMUDw6AICLOi8W6qrhl9YUaePBWQRi9b36wHJVI/zvM\n/2ji/3z/r7PlAJBXYJw8dejrDmsmd9iogQiQJAZ6jjlvSC3+kAiMWk9n8MVYsox8\nBzwj+nsbfQ/O26K6wGCJGctLtEvBcFeb4XNKdkhUCuAz0EHyZ5Fen4NkAzEBSuUo\nLqVYlaNgpBuwd5y7efrnZw4CuS/J60sP4Kgyu1vDjvfWzzKjvVM8YJMBmaCOlG3U\nKrxgn4WR9slTnq02OVwVS84/z8RLpdI4ZV4krAzPIQKBgQD7AW3eL/Br6UDt41KZ\n2JHRH9+SRaETI25rVm3kL/QfWemA0IIg59455L/xEeIfBQs/Hc1hc/tfJr5dOS9g\nI1NRE4FZX36WS1FAAsE4pzzPFFOJJez7qZuOaIeigKCHbZ497BXaiQJhsMCNTxry\nIDgnicS6Nce/7NuFJIXewLt/PQKBgQDfd45z9FiiN3+aQX7oVG7HAud2GAdaunfr\nR4znmOnHQ+EXu5QqefzNqdHDmZ1nTk8YJNVv6LZyf5SWdfyzAwLe/yb8LES61BML\nBw34wqx8tjGMJst54eJA1/7j+6WI2ZZlg/7pbY//I8NsSTwAhmo02LKrN9eFB7gO\nMl9CzmeYoQKBgQChh47rwJAI8eet72+Vv/A+0zMuT47T4SZK/yjjAxUoI9WH5ycH\nBBBX02TOP4L0EWvmZ0hnYZsv5Z/2IDnjtXgFofbIzBKLp9aWye8MhVs1rFAB3509\nay3HHG/E3N/xp1KBaO+7XhZhRbz0cybVEHTyxM8MQlXUphmy+gkIi6FdxQKBgGIN\nP4A5crqax26T1m9yvLit2YnDuVZiA0RFPNpSCiHY8udK8xRAOmCzZssAmEQ/5Ayf\n/NcBsSxENppeYubZJ2VZZ222ruGbNE/eZI8GPFDsUIlCbH2qU3BIVhsKy/NkJc2d\nQTiDTm+Q7aqR57YDRI6zlpHyCqrgXC4+g/X4QxSBAoGAL3LS/uo77xEQmWVG3dFS\nkg1TBy5zLC8dY7BquMmAnOcj2vwo599H+jvsGcgZXSVBmQATcWBNgpVtIk8+z9Pz\nGKu4sFK3nhNNNDKdntIEmllefQBAHOAlXS1Y3F2b3D7NjwHV7RN4t1/SPZ0YS/wL\n6kzC0Ayb30wPBlPRFMGknM0=\n-----END PRIVATE KEY-----\n",
-  "client_email": "mathstk-ex@mathstk-ex.iam.gserviceaccount.com",
-  "client_id": "114993129161824871154",
-  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-  "token_uri": "https://oauth2.googleapis.com/token",
-  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/mathstk-ex%40mathstk-ex.iam.gserviceaccount.com",
-  "universe_domain": "googleapis.com"
-}
-
-SCOPES = ['https://www.googleapis.com/auth/drive']
-
-def get_drive_service():
-    # Utilise les données intégrées au lieu de lire un fichier
-    from google.oauth2.service_account import Credentials
-    from googleapiclient.discovery import build
-    creds = Credentials.from_service_account_info(SERVICE_ACCOUNT_INFO, scopes=SCOPES)
-    service = build('drive', 'v3', credentials=creds)
-    return service
-
-def create_folder(service, folder_name, parent_id=None):
-    folder_metadata = {
-        'name': folder_name,
-        'mimeType': 'application/vnd.google-apps.folder'
-    }
-    if parent_id:
-        folder_metadata['parents'] = [parent_id]
-    folder = service.files().create(body=folder_metadata, fields='id').execute()
-    print(f"Folder '{folder_name}' created with ID: {folder.get('id')}")
-    return folder.get('id')
-
-def get_medicsas_folder_id(service):
-    query = "mimeType='application/vnd.google-apps.folder' and name='MEDICSAS_FILES' and trashed=false"
-    results = service.files().list(q=query, fields="files(id, name)").execute()
-    items = results.get('files', [])
-    if items:
-        print("Folder MEDICSAS_FILES already exists.")
-        return items[0]['id']
-    else:
-        print("Folder MEDICSAS_FILES does not exist. It will be created.")
-        return create_folder(service, "MEDICSAS_FILES")
-
-def get_user_drive_folder_id(service, user_email, parent_folder_id):
-    folder_name = f"user_{user_email}"
-    query = (
-        f"mimeType='application/vnd.google-apps.folder' and "
-        f"name='{folder_name}' and '{parent_folder_id}' in parents and trashed=false"
-    )
-    results = service.files().list(q=query, fields="files(id, name)").execute()
-    items = results.get('files', [])
-    if items:
-        print(f"Folder for {user_email} already exists.")
-        return items[0]['id']
-    else:
-        print(f"Folder for {user_email} does not exist. It will be created.")
-        folder_metadata = {
-            'name': folder_name,
-            'mimeType': 'application/vnd.google-apps.folder',
-            'parents': [parent_folder_id]
-        }
-        folder = service.files().create(body=folder_metadata, fields='id').execute()
-        print(f"Folder '{folder_name}' created with ID: {folder.get('id')}")
-        return folder.get('id')
-
-def upload_bytes_to_drive(file_bytes, filename, mime_type='application/octet-stream', folder_id=None):
-    service = get_drive_service()
-    file_metadata = {'name': filename}
-    if folder_id:
-        file_metadata['parents'] = [folder_id]
-    stream = io.BytesIO(file_bytes)
-    from googleapiclient.http import MediaIoBaseUpload
-    media = MediaIoBaseUpload(stream, mimetype=mime_type)
-    file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
-    print(f"File {filename} uploaded with ID {file.get('id')}")
-    return file.get('id')
-
-def download_file_from_drive(file_id):
-    service = get_drive_service()
-    request_drive = service.files().get_media(fileId=file_id)
-    fh = io.BytesIO()
-    from googleapiclient.http import MediaIoBaseDownload
-    downloader = MediaIoBaseDownload(fh, request_drive)
-    done = False
-    while not done:
-        status, done = downloader.next_chunk()
-    fh.seek(0)
-    return fh
-
-def get_drive_file_id(service, filename, folder_id):
-    query = f"name='{filename}' and '{folder_id}' in parents and trashed=false"
-    results = service.files().list(q=query, fields="files(id, name)").execute()
-    items = results.get('files', [])
-    if items:
-        return items[0]['id']
-    else:
-        return None
-
-def get_user_folder_id(user_email="default_user"):
-    """
-    Returns the Google Drive folder ID associated with the user.
-    By default, if authentication is not set up, "default_user" is used.
-    """
-    service = get_drive_service()
-    medicsas_folder_id = get_medicsas_folder_id(service)
-    return get_user_drive_folder_id(service, user_email, medicsas_folder_id)
-
-# -------------------------------------------------------------------------------
-# Définition du dossier pour sauvegarder les PDFs générés
-# -------------------------------------------------------------------------------
-PDF_FOLDER = os.path.join(os.getcwd(), "pdf_files")
-if not os.path.exists(PDF_FOLDER):
-    os.makedirs(PDF_FOLDER)
-
-# -------------------------------------------------------------------------------
-# Configuration de l'application Flask et de la clé secrète
-# -------------------------------------------------------------------------------
 app = Flask(__name__)
-app.secret_key = os.environ.get("07ffda66dd44daf06c10bc672b47f0b0eaff1f2fade1034e3bfdb57c4dcb7cc8", secrets.token_hex(32))
+# La clé secrète doit être définie dans l'environnement pour la production
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", secrets.token_hex(32))
+# Configuration de SQLAlchemy (ici avec SQLite, à adapter pour la production)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
 
-# -------------------------------------------------------------------------------
-# Chargement des informations sensibles depuis les variables d'environnement (si présentes)
-# -------------------------------------------------------------------------------
-# Ici, GOOGLE_CREDENTIALS_INFO et SERVICE_ACCOUNT_INFO sont déjà définis ci-dessus.
+# ---------------------------
+# Modèle de données
+# ---------------------------
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(64), nullable=False)
+    birth_date = db.Column(db.String(10))
+    birth_place = db.Column(db.String(100))
+    father_name = db.Column(db.String(100))
+    mother_name = db.Column(db.String(100))
+    plan = db.Column(db.String(20))
+    plan_start = db.Column(db.DateTime)
+    # Stockage des compteurs d'utilisation sous forme JSON
+    usage_count = db.Column(db.JSON, default=lambda: {
+        "easy": 0, "intermediate": 0, "hard": 0, "very hard": 0, "expert": 0, "total": 0
+    })
+    theme = db.Column(db.String(20), default="blue")
+    remember_token = db.Column(db.String(64))
 
-# -------------------------------------------------------------------------------
-# Fonctions de gestion des utilisateurs stockés sur Google Drive (sans stockage local)
-# -------------------------------------------------------------------------------
-def load_users():
-    try:
-        service = get_drive_service()
-        config_folder_id = get_config_folder_id(service)
-        file_id = get_drive_file_id(service, "users.json", config_folder_id)
-        if file_id:
-            fh = download_file_from_drive(file_id)
-            content = fh.read().decode("utf-8")
-            data = json.loads(content)
-            for email, info in data.items():
-                if "plan_start" in info and info["plan_start"]:
-                    info["plan_start"] = datetime.fromisoformat(info["plan_start"])
-            return data
-        else:
-            return {}
-    except Exception as e:
-        logger.error("Error loading users: %s", e)
-        return {}
+with app.app_context():
+    db.create_all()
 
-def save_users():
-    try:
-        data_to_save = {}
-        for email, info in users.items():
-            data = info.copy()
-            if "plan_start" in data and isinstance(data["plan_start"], datetime):
-                data["plan_start"] = data["plan_start"].isoformat()
-            data_to_save[email] = data
-        content = json.dumps(data_to_save, indent=4)
-        service = get_drive_service()
-        config_folder_id = get_config_folder_id(service)
-        file_id = get_drive_file_id(service, "users.json", config_folder_id)
-        content_bytes = content.encode("utf-8")
-        if file_id:
-            update_file_in_drive(service, file_id, content_bytes, "application/json")
-        else:
-            upload_bytes_to_drive(content_bytes, "users.json", mime_type="application/json", folder_id=config_folder_id)
-    except Exception as e:
-        logger.error("Error saving users: %s", e)
-
-def update_file_in_drive(service, file_id, file_bytes, mime_type='application/octet-stream'):
-    stream = io.BytesIO(file_bytes)
-    from googleapiclient.http import MediaIoBaseUpload
-    media = MediaIoBaseUpload(stream, mimetype=mime_type)
-    file = service.files().update(fileId=file_id, media_body=media).execute()
-    return file.get('id')
-
-def get_config_folder_id(service):
-    parent_id = get_medicsas_folder_id(service)
-    query = ("mimeType='application/vnd.google-apps.folder' and name='Config' and "
-             f"'{parent_id}' in parents and trashed=false")
-    results = service.files().list(q=query, fields="files(id, name)").execute()
-    items = results.get('files', [])
-    if items:
-        return items[0]['id']
-    else:
-        return create_folder(service, "Config", parent_id)
-
-users = load_users()
-
-# -------------------------------------------------------------------------------
-# Fonctions utilitaires et de génération d'exercices
-# -------------------------------------------------------------------------------
+# ---------------------------
+# Fonction utilitaires
+# ---------------------------
 def hash_password(password):
     return hashlib.sha256(password.encode('utf-8')).hexdigest()
 
+def get_user(email):
+    return User.query.filter_by(email=email).first()
+
+def save_user(user):
+    db.session.add(user)
+    db.session.commit()
+
+def get_local_ip():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+    except Exception:
+        local_ip = "127.0.0.1"
+    finally:
+        s.close()
+    return local_ip
+
+# ---------------------------
+# Gestion des exercices et PDF
+# ---------------------------
 def generate_exercise(operation, level):
     if operation in ['addition', 'subtraction']:
         if level == 'easy':
@@ -310,9 +158,9 @@ def draw_exercise_box(pdf, ex_num, ex, x, y, col_width, line_height, solution_te
     else:
         pdf.cell(content_width, line_height, f"{solution_text}", border=0, align="R", ln=1)
 
-# -------------------------------------------------------------------------------
-# Templates HTML (navigation, footer, pages)
-# -------------------------------------------------------------------------------
+# ---------------------------
+# Templates HTML
+# ---------------------------
 nav_html = """
 <nav class="navbar navbar-expand-lg navbar-light mac-navbar">
   <div class="container-fluid">
@@ -407,8 +255,10 @@ meta_head = """
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 """
 
-# (Les templates pour la sélection, exercices, résultats, plan, login, register, etc. suivent)
-# Pour la concision, ils sont inclus tels quels dans le code d'origine :
+# Pour la concision, les autres templates (selection, exercise, result, choose_plan, login, register, forgot, change, activation) 
+# sont inclus ci-dessous exactement comme dans votre version initiale.
+# Ils n'ont pas été modifiés dans leur logique, seule la gestion des données a été adaptée.
+
 selection_template = """
 <!doctype html>
 <html lang="en">
@@ -739,9 +589,6 @@ choose_plan_template = """
 </html>
 """
 
-# -----------------------------------------------------------------------------
-# Modification du template Login pour ajouter les boutons "S'enregistrer" et "Mot de passe oublié"
-# -----------------------------------------------------------------------------
 login_template = """
 <!doctype html>
 <html lang="en">
@@ -785,7 +632,6 @@ login_template = """
         </div>
         <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-sign-in-alt"></i> Login</button>
       </form>
-      <!-- Boutons ajoutés sous le bouton Login -->
       <div class="text-center mt-3">
         <a href="/register" class="btn btn-secondary btn-block"><i class="fas fa-user-plus"></i> S'enregistrer</a>
         <a href="/forgot_password" class="btn btn-secondary btn-block"><i class="fas fa-unlock-alt"></i> Mot de passe oublié</a>
@@ -1020,11 +866,11 @@ activation_template = """
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
   </body>
 </html>
-""" 
+"""
 
-# -------------------------------------------------------------------------------
-# Fonctions de gestion des plans et activation
-# -------------------------------------------------------------------------------
+# ---------------------------
+# Activation et plans
+# ---------------------------
 def generate_activation_key(email, plan, secret, date_str):
     data = f"{email.lower()}_{plan}_{secret}_{date_str}"
     hash_hex = hashlib.sha256(data.encode()).hexdigest()
@@ -1041,53 +887,59 @@ def generate_activation_key(email, plan, secret, date_str):
 
 ACTIVATION_TOKEN = os.environ.get("ACTIVATION_TOKEN", "1r2h3y4f7e5dsf6")
 
-def can_use_plan(email, level):
-    user_data = users[email]
-    usage_count = user_data.setdefault("usage_count", {"easy": 0, "intermediate": 0, "hard": 0, "very hard": 0, "expert": 0, "total": 0})
-    if user_data["plan"] == "free":
+def can_use_plan(user, level):
+    usage_count = user.usage_count or {"easy": 0, "intermediate": 0, "hard": 0, "very hard": 0, "expert": 0, "total": 0}
+    if user.plan == "free":
         return usage_count.get(level, 0) < 1
-    elif user_data["plan"] == "monthly":
+    elif user.plan == "monthly":
         return True
-    elif user_data["plan"] == "twenty":
-        return usage_count["total"] < 20
+    elif user.plan == "twenty":
+        return usage_count.get("total", 0) < 20
     return False
 
-def track_usage(email, level):
-    user_data = users[email]
-    usage_count = user_data.setdefault("usage_count", {"easy": 0, "intermediate": 0, "hard": 0, "very hard": 0, "expert": 0, "total": 0})
-    plan = user_data["plan"]
-    if plan == "free":
-        usage_count[level] += 1
+def track_usage(user, level):
+    usage_count = user.usage_count or {"easy": 0, "intermediate": 0, "hard": 0, "very hard": 0, "expert": 0, "total": 0}
+    if user.plan == "free":
+        usage_count[level] = usage_count.get(level, 0) + 1
+    elif user.plan == "twenty":
+        usage_count["total"] = usage_count.get("total", 0) + 1
+        usage_count[level] = usage_count.get(level, 0) + 1
+    user.usage_count = usage_count
+    save_user(user)
+
+def update_activation_after_payment(user, plan):
+    now_str = datetime.now().strftime("%Y%m%d%H%M%S")
+    if plan == "monthly":
+        activation_id = f"{user.email}_{now_str}"
+        user.plan = "monthly"
+        user.plan_start = datetime.now()
+        user.activation_id = activation_id
     elif plan == "twenty":
-        usage_count["total"] += 1
-        usage_count[level] += 1
-    save_users()
+        activation_id = f"{user.email}_{user.birth_date}_{now_str}"
+        user.plan = "twenty"
+        user.activation_id = activation_id
+    save_user(user)
 
-def get_local_ip():
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        s.connect(("8.8.8.8", 80))
-        local_ip = s.getsockname()[0]
-    except Exception:
-        local_ip = "127.0.0.1"
-    finally:
-        s.close()
-    return local_ip
-
-# -------------------------------------------------------------------------------
+# ---------------------------
 # Gestion des thèmes et cookies
-# -------------------------------------------------------------------------------
+# ---------------------------
 @app.before_request
 def check_theme():
     theme = request.args.get('theme')
     if theme in ['blue', 'pink', 'green', 'yellow', 'kid_friendly']:
         session['theme'] = theme
         if "user" in session:
-            users[session["user"]]["theme"] = theme
-            save_users()
+            user = get_user(session["user"])
+            if user:
+                user.theme = theme
+                save_user(user)
     elif "theme" not in session:
-        if "user" in session and "theme" in users[session["user"]]:
-            session["theme"] = users[session["user"]]["theme"]
+        if "user" in session:
+            user = get_user(session["user"])
+            if user and user.theme:
+                session["theme"] = user.theme
+            else:
+                session["theme"] = "blue"
         else:
             session["theme"] = "blue"
 
@@ -1096,10 +948,9 @@ def check_remember_me():
     if "user" not in session:
         token = request.cookies.get("remember_token")
         if token:
-            for email, data in users.items():
-                if data.get("remember_token") == token:
-                    session["user"] = email
-                    break
+            user = User.query.filter_by(remember_token=token).first()
+            if user:
+                session["user"] = user.email
 
 @app.route("/set_theme/<theme>")
 def set_theme(theme):
@@ -1108,53 +959,57 @@ def set_theme(theme):
         return redirect(request.referrer or "/")
     session['theme'] = theme
     if "user" in session:
-        users[session["user"]]["theme"] = theme
-        save_users()
+        user = get_user(session["user"])
+        if user:
+            user.theme = theme
+            save_user(user)
     flash(f"Theme changed to {theme}", "success")
     return redirect(request.referrer or "/")
 
-# -------------------------------------------------------------------------------
-# Routes principales et logique de l'application
-# -------------------------------------------------------------------------------
+# ---------------------------
+# Routes principales
+# ---------------------------
 latest_exercises = None
 latest_meta = None
 latest_result = None
+PDF_FOLDER = os.path.join(os.getcwd(), "pdf_files")
+if not os.path.exists(PDF_FOLDER):
+    os.makedirs(PDF_FOLDER)
 
 @app.route("/", methods=["GET"])
 def index_get():
     if "user" not in session:
         return redirect("/login")
-    email = session["user"]
-    user_data = users[email]
-    if "plan" not in user_data:
+    user = get_user(session["user"])
+    if not user:
+        return redirect("/login")
+    if not user.plan:
         return redirect("/choose_plan")
-    if user_data["plan"] == "monthly":
-        start = user_data["plan_start"]
-        if datetime.now() > (start + timedelta(days=30)):
+    if user.plan == "monthly":
+        if user.plan_start and datetime.now() > (user.plan_start + timedelta(days=30)):
             flash("Your monthly subscription has expired. Please choose a new plan.", "warning")
-            user_data.pop("plan", None)
-            user_data.pop("plan_start", None)
-            save_users()
+            user.plan = None
+            user.plan_start = None
+            save_user(user)
             return redirect("/choose_plan")
-    if user_data["plan"] == "free":
-        usage_count = user_data.setdefault("usage_count", {"easy": 0, "intermediate": 0, "hard": 0, "very hard": 0, "expert": 0, "total": 0})
+    if user.plan == "free":
+        usage_count = user.usage_count or {"easy": 0, "intermediate": 0, "hard": 0, "very hard": 0, "expert": 0, "total": 0}
         levels = ["easy", "intermediate", "hard", "very hard", "expert"]
-        all_exhausted = all(usage_count.get(lvl, 0) >= 1 for lvl in levels)
-        if all_exhausted:
+        if all(usage_count.get(lvl, 0) >= 1 for lvl in levels):
             flash("Your free trial is exhausted. Please choose another plan.", "warning")
             return redirect("/choose_plan")
-    usage_count = user_data.setdefault("usage_count", {"easy": 0, "intermediate": 0, "hard": 0, "very hard": 0, "expert": 0, "total": 0})
+    usage_count = user.usage_count or {"easy": 0, "intermediate": 0, "hard": 0, "very hard": 0, "expert": 0, "total": 0}
     host_address = f"{get_local_ip()}:5500"
     levels = ["easy", "intermediate", "hard", "very hard", "expert"]
-    can_use_dict = {lvl: can_use_plan(email, lvl) for lvl in levels}
+    can_use_dict = {lvl: can_use_plan(user, lvl) for lvl in levels}
     plan_start_str = ""
     plan_end_str = ""
-    if user_data["plan"] == "monthly":
-        plan_start_str = user_data["plan_start"].strftime("%Y-%m-%d")
-        plan_end_str = (user_data["plan_start"] + timedelta(days=30)).strftime("%Y-%m-%d")
+    if user.plan == "monthly" and user.plan_start:
+        plan_start_str = user.plan_start.strftime("%Y-%m-%d")
+        plan_end_str = (user.plan_start + timedelta(days=30)).strftime("%Y-%m-%d")
     return render_template_string(selection_template,
                                   session=session,
-                                  user_plan=user_data["plan"],
+                                  user_plan=user.plan,
                                   usage_count=usage_count,
                                   plan_start=plan_start_str,
                                   plan_end=plan_end_str,
@@ -1165,16 +1020,16 @@ def index_get():
 def index_post():
     if "user" not in session:
         return redirect("/login")
-    email = session["user"]
-    if "plan" not in users[email]:
+    user = get_user(session["user"])
+    if not user or not user.plan:
         return redirect("/choose_plan")
     phase = request.form.get("phase")
     if phase == "generate":
         level = request.form.get("level")
-        if not can_use_plan(email, level):
+        if not can_use_plan(user, level):
             flash("You have exhausted your uses for this level.", "danger")
             return redirect("/")
-        track_usage(email, level)
+        track_usage(user, level)
         selected_category = request.form.get("category")
         theme = session.get("theme", "blue")
         nb_ops = int(request.form.get("nb_ops", 100))
@@ -1207,12 +1062,11 @@ def index_post():
 def choose_plan():
     if "user" not in session:
         return redirect("/login")
-    email = session["user"]
-    user_data = users[email]
+    user = get_user(session["user"])
     free_disabled = False
-    if "usage_count" in user_data:
+    if user.usage_count:
         levels = ["easy", "intermediate", "hard", "very hard", "expert"]
-        free_disabled = all(user_data["usage_count"].get(lvl, 0) >= 1 for lvl in levels)
+        free_disabled = all(user.usage_count.get(lvl, 0) >= 1 for lvl in levels)
     if request.method == "POST":
         plan = request.form.get("plan")
         if plan in ("monthly", "twenty"):
@@ -1223,9 +1077,10 @@ def choose_plan():
         if plan == "free" and free_disabled:
             flash("Your free trial is exhausted. Please choose another plan.", "warning")
             return render_template_string(choose_plan_template, session=session, free_disabled=True)
-        user_data["plan"] = plan
-        user_data.setdefault("usage_count", {"easy": 0, "intermediate": 0, "hard": 0, "very hard": 0, "expert": 0, "total": 0})
-        save_users()
+        user.plan = plan
+        if not user.usage_count:
+            user.usage_count = {"easy": 0, "intermediate": 0, "hard": 0, "very hard": 0, "expert": 0, "total": 0}
+        save_user(user)
         flash("Plan successfully saved.", "success")
         return redirect("/")
     return render_template_string(choose_plan_template, session=session, free_disabled=free_disabled)
@@ -1234,48 +1089,35 @@ def choose_plan():
 def activation():
     if "user" not in session:
         return redirect("/login")
-    email = session["user"]
-    return render_template_string(activation_template, email=email)
+    user = get_user(session["user"])
+    return render_template_string(activation_template, email=user.email)
 
 @app.route("/activate_key", methods=["POST"])
 def activate_key():
     if "user" not in session:
         return redirect("/login")
     activation_key_input = request.form.get("activation_key")
-    email = session["user"]
+    user = get_user(session["user"])
     today = datetime.now().strftime("%Y%m%d")
-    expected_key_monthly = generate_activation_key(email, "monthly", ACTIVATION_TOKEN, today)
-    expected_key_twenty = generate_activation_key(email, "twenty", ACTIVATION_TOKEN, today)
+    expected_key_monthly = generate_activation_key(user.email, "monthly", ACTIVATION_TOKEN, today)
+    expected_key_twenty = generate_activation_key(user.email, "twenty", ACTIVATION_TOKEN, today)
     if activation_key_input == expected_key_monthly:
-        update_activation_after_payment("monthly")
+        update_activation_after_payment(user, "monthly")
         flash("Activation key valid! Your monthly plan is activated.", "success")
         return redirect(url_for("index_get"))
     elif activation_key_input == expected_key_twenty:
-        update_activation_after_payment("twenty")
+        update_activation_after_payment(user, "twenty")
         flash("Activation key valid! Your 20-tries plan is activated.", "success")
         return redirect(url_for("index_get"))
     else:
         flash("Invalid activation key.", "danger")
         return redirect(url_for("activation"))
 
-def update_activation_after_payment(plan):
-    email = session["user"]
-    user_data = users[email]
-    now_str = datetime.now().strftime("%Y%m%d%H%M%S")
-    if plan == "monthly":
-        activation_id = f"{email}_{now_str}"
-        user_data["plan"] = "monthly"
-        user_data["plan_start"] = datetime.now()
-        user_data["activation_id"] = activation_id
-    elif plan == "twenty":
-        birth_date = user_data.get("birth_date", "unknown")
-        activation_id = f"{email}_{birth_date}_{now_str}"
-        user_data["plan"] = "twenty"
-        user_data["activation_id"] = activation_id
-    save_users()
-
-PAYPAL_CLIENT_ID = os.environ.get("PAYPAL_CLIENT_ID")
-PAYPAL_SECRET = os.environ.get("PAYPAL_SECRET")
+# ---------------------------
+# PayPal Integration
+# ---------------------------
+PAYPAL_CLIENT_ID = os.environ.get("PAYPAL_CLIENT_ID") or "AYPizBBNq1vp8WyvzvTHITGq9KoUUTXmzE0DBA7D_lWl5Ir6wEwVCB-gorvd1jgyX35ZqyURK6SMvps5"
+PAYPAL_SECRET = os.environ.get("PAYPAL_SECRET") or "EKSvwa_yK7ZYTuq45VP60dbRMzChbrko90EnhQsRzrMNZhqU2mHLti4_UTYV60ytY9uVZiAg7BoBlNno"
 PAYPAL_OAUTH_URL = "https://api-m.paypal.com/v1/oauth2/token"
 PAYPAL_ORDER_API = "https://api-m.paypal.com/v2/checkout/orders"
 
@@ -1353,8 +1195,9 @@ def paypal_success():
     success = capture_paypal_order(order_id)
     if success:
         plan = purchase_orders.get(order_id)
-        if plan:
-            update_activation_after_payment(plan)
+        user = get_user(session["user"])
+        if plan and user:
+            update_activation_after_payment(user, plan)
             flash(f"Payment validated for the {plan} plan!", "success")
         else:
             flash("Payment validated, but unknown plan.", "error")
@@ -1368,6 +1211,9 @@ def paypal_cancel():
     flash("Payment cancelled by the user.", "error")
     return redirect(url_for("index_get"))
 
+# ---------------------------
+# Génération de PDF (stockage local)
+# ---------------------------
 @app.route("/generate_pdf")
 def generate_pdf_route():
     global latest_result, latest_exercises, latest_meta
@@ -1442,7 +1288,7 @@ def generate_pdf_route():
         col = 0
         for i, sol in enumerate(sol_list):
             parts = sol["question"].split()
-            ex = {"a": parts[0], "op": parts[1], "b": parts[2]}
+            ex = {"a": int(parts[0]), "op": parts[1], "b": int(parts[2])}
             draw_exercise_box(pdf, i+1, ex, x, y, col_width, line_height, solution_text=sol["solution"])
             col += 1
             if col == pdf_columns:
@@ -1458,11 +1304,6 @@ def generate_pdf_route():
             pdf.add_page()
     pdf_file_path = os.path.join(PDF_FOLDER, "exercise_results.pdf")
     pdf.output(pdf_file_path)
-    with open(pdf_file_path, "rb") as f:
-        file_bytes = f.read()
-    user_email = session.get("user", "default_user")
-    folder_id = get_user_folder_id(user_email)
-    upload_bytes_to_drive(file_bytes, "exercise_results.pdf", mime_type="application/pdf", folder_id=folder_id)
     return send_file(pdf_file_path, mimetype='application/pdf', as_attachment=True, download_name="exercise_results.pdf")
 
 @app.route("/answers", methods=["POST"])
@@ -1548,36 +1389,35 @@ def login_route():
         email = request.form.get("email")
         password = request.form.get("password")
         remember = request.form.get("remember")
-        if email in users:
-            stored_hash = users[email]["password"]
-            if stored_hash == hash_password(password):
-                session["user"] = email
-                flash("Login successful.", "success")
-                resp = make_response(redirect("/"))
-                if remember == "on":
-                    token = secrets.token_hex(32)
-                    users[email]["remember_token"] = token
-                    expires = datetime.now() + timedelta(days=30)
-                    resp.set_cookie("remember_token", token, expires=expires)
-                else:
-                    resp.set_cookie("remember_token", "", expires=0)
-                    users[email].pop("remember_token", None)
-                save_users()
-                return resp
+        user = get_user(email)
+        if user and user.password_hash == hash_password(password):
+            session["user"] = user.email
+            flash("Login successful.", "success")
+            resp = make_response(redirect("/"))
+            if remember == "on":
+                token = secrets.token_hex(32)
+                user.remember_token = token
+                expires = datetime.now() + timedelta(days=30)
+                resp.set_cookie("remember_token", token, expires=expires)
+            else:
+                resp.set_cookie("remember_token", "", expires=0)
+                user.remember_token = None
+            save_user(user)
+            return resp
         flash("Invalid credentials.", "danger")
     return render_template_string(login_template, session=session)
 
 @app.route("/logout")
 def logout_route():
     if "user" in session:
-        email = session["user"]
-        if email in users:
-            users[email].pop("remember_token", None)
+        user = get_user(session["user"])
+        if user:
+            user.remember_token = None
+            save_user(user)
     session.pop("user", None)
     flash("Logged out.", "info")
     resp = make_response(redirect("/login"))
     resp.set_cookie("remember_token", "", expires=0)
-    save_users()
     return resp
 
 @app.route("/register", methods=["GET", "POST"])
@@ -1590,18 +1430,21 @@ def register_route():
         birth_place = request.form.get("birth_place")
         father = request.form.get("father_name")
         mother = request.form.get("mother_name")
-        if email in users:
+        if get_user(email):
             flash("This email is already used.", "warning")
             return render_template_string(register_template, session=session)
         if pw != cpw:
             flash("Passwords do not match.", "warning")
             return render_template_string(register_template, session=session)
-        users[email] = {"password": hash_password(pw),
-                        "birth_date": birth_date,
-                        "birth_place": birth_place,
-                        "father_name": father,
-                        "mother_name": mother}
-        save_users()
+        new_user = User(
+            email=email,
+            password_hash=hash_password(pw),
+            birth_date=birth_date,
+            birth_place=birth_place,
+            father_name=father,
+            mother_name=mother
+        )
+        save_user(new_user)
         flash("Account created successfully!", "success")
         return redirect("/login")
     return render_template_string(register_template, session=session)
@@ -1614,16 +1457,16 @@ def forgot_password_route():
         mother = request.form.get("mother_name")
         new_pw = request.form.get("new_password")
         conf_pw = request.form.get("confirm_password")
-        if email not in users:
+        user = get_user(email)
+        if not user:
             flash("Email not found.", "danger")
             return render_template_string(forgot_template, session=session)
         if new_pw != conf_pw:
             flash("Passwords do not match.", "warning")
             return render_template_string(forgot_template, session=session)
-        user_data = users[email]
-        if user_data["father_name"] == father and user_data["mother_name"] == mother:
-            user_data["password"] = hash_password(new_pw)
-            save_users()
+        if user.father_name == father and user.mother_name == mother:
+            user.password_hash = hash_password(new_pw)
+            save_user(user)
             flash("Password reset successfully!", "success")
             return redirect("/login")
         else:
@@ -1639,16 +1482,15 @@ def change_password_route():
         old_pw = request.form.get("old_password")
         new_pw = request.form.get("new_password")
         conf_pw = request.form.get("confirm_password")
-        email = session["user"]
-        user_data = users[email]
-        if user_data["password"] != hash_password(old_pw):
+        user = get_user(session["user"])
+        if user.password_hash != hash_password(old_pw):
             flash("Incorrect old password.", "danger")
             return render_template_string(change_template, session=session)
         if new_pw != conf_pw:
             flash("New passwords do not match.", "warning")
             return render_template_string(change_template, session=session)
-        user_data["password"] = hash_password(new_pw)
-        save_users()
+        user.password_hash = hash_password(new_pw)
+        save_user(user)
         flash("Password changed successfully!", "success")
         return redirect("/")
     return render_template_string(change_template, session=session)
@@ -1660,9 +1502,9 @@ def root():
     else:
         return redirect("/")
 
-# -------------------------------------------------------------------------------
+# ---------------------------
 # Lancement de l'application
-# -------------------------------------------------------------------------------
+# ---------------------------
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5500))
     app.run(host="0.0.0.0", port=port, debug=False)
