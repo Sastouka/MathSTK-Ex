@@ -26,7 +26,7 @@ app = Flask(__name__)
 # La clé secrète doit être définie dans l'environnement pour la production
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", secrets.token_hex(32))
 # Configuration de SQLAlchemy (ici avec SQLite, à adapter pour la production)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////data/users.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
