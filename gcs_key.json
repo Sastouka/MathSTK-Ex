@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "mathstk-ex",
+  "private_key_id": "6908e68dc27331d855f9f3ea145402fd18fb6c4b",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCUGXRZMItnX618\nj+IBtTX8NJVz0Rx03OE4A3EtEnEBKnGI4UaIqyYoo8jyVd5Kgx2ke4yKdMrKz8WB\n0J3CJF0CyzXeiJ6XDluDwC010/02P4L2+Ok2/Tc10sfv0HRwSrR+VGiIyoiSFwm9\n3xmQYunB5H8HqQvCq1C4JARfZF1hP1ByazdhJDJSHqfXo8k6eO+RDMbYtZnumRM6\np4jT85vAO2z5sit0SOxnBTI7yEYgp5oS2LaNzbld1N4bq0ncxYd4k64e1iyjejrw\nYHrNkp8aLK6YWHmRizMr/Lh8fkwVuMFijA3m/PmGn97MV9YHySsbL+9DdWNER0dk\n052KPUb5AgMBAAECggEAJbJS+K7QFQh4Bsgy7V9cNe2GixvTg/WDCDhsEt5qUDMn\nAgHha8EwrdB+whxUQCAep/Lgw49V3QjEy7W3qiaKXD8wX4vj3ixD5AXDHDvw7GF/\nKvERn7MVXghgZuzm7nw9dBh1ITh4ScM+cgt7HNLokDdilCcVvL/RhIV6bXOFB07s\nsAxdb1n0UvQ6br7JxeWyEvPb/pJDLSC/NYJDj8lo69+fps2x45bDU/CdwN8qj4AT\nxpZ5qdOO9PugenOzyAvbhczpDZclWKOnbQmZZRGssnOpqcJDNsBrOkYK/3Z5SAX6\nzryuTyM9Pnbbfa7wbLkfrzbRdXZcaCpXaPiLMemgNwKBgQDKH456M3VACunf8Hgt\nSrkPm6ENUhu5C/7f92rPDgmA30nj80Wf2HgQcVXrMLxzjJxEwXkVOjTyvF5h/2o0\n2pAVQf24inJMN4ds2rpphZAr3B9xm4JA2SPCKcSqly3xfs3bQM0NUi+sQmwBm+Fh\nB3u9naA/VqJhzfMf7W4eyPqh+wKBgQC7k25iOZvz3i7ET/eVsgTy/GGio0WTw4js\nOmnZuyg5SnD0npHrHLz2xjoa8B1Vcwg8m5OyS4N2kXaGFZNnaDDVYP0eoY/aQXhD\nc1CQ/6aHd4iZGPuusfLqv4zghDu9b3NQr5HKjqeunOE/Z7+96L69I/Ys0x0869T0\ncVPj7SVcmwKBgQCTyl8zm0ywd0prJDm7ZFfMwc8RHmiG9e53dUH0BB+Oy7YLp2XR\na0bfPv/D6O7izn21CIKwss7kbjfVEB1oaCfSY15SAWlxsWikf4qufardZybWuw6S\nvDMZVdEnq0M8watkFg3ZH68cFbVDt+ckO4SPMSJrLb2uJhkPz1wlxm784QKBgBBR\n5Xq6VG1FWYBPDNWDZZbWipAh8H3It3MGKgt9kyRY67b8zOlN2MsHuCp71bGHjqHn\nT1Rl6Yw5X7yOyAJpOEZ4Z81wdRmiNJp5v/q9o3mJ1uKrH8q1RNNT0yf9mU0EE15j\nyCV9f+1bTOW9Wxtk0qOWK2b+/z47ro2OBqSAD44dAoGBAMi5kNN/OuXW6HCE1Ein\nbs3sUfTlWSzx4GHFa31OIeRL+sB3FuX3jXyZNDbaAcMsZHpP4yL7RAFWGJYtanRU\nvcb0LfydUHMsJL9lYFmeFhGatkIOQMpqghNNxbGqUvYVCipmYdhmf9N3zfqVwz3f\nRYTnPsVb/W/qL7+nVAqrxTB9\n-----END PRIVATE KEY-----\n",
+  "client_email": "flask-stockage@mathstk-ex.iam.gserviceaccount.com",
+  "client_id": "105381141188984225101",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/flask-stockage%40mathstk-ex.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
