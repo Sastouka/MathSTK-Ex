@@ -80,7 +80,27 @@ def save_users():
     except Exception as e:
         logger.error("Error saving users: %s", e)
 
+# Chargement initial des utilisateurs
 users = load_users()
+
+# Variable globale pour marquer les données modifiées
+users_dirty = False
+
+def mark_users_dirty():
+    global users_dirty
+    users_dirty = True
+
+def autosave_users():
+    global users_dirty
+    while True:
+        if users_dirty:
+            save_users()
+            users_dirty = False
+        time.sleep(5)
+
+# Démarrage du thread d'autosave (daemon afin qu'il ne bloque pas l'arrêt de l'application)
+autosave_thread = threading.Thread(target=autosave_users, daemon=True)
+autosave_thread.start()
 
 # ------------------------------
 # Fonctions utilitaires et de génération d'exercices
@@ -913,7 +933,7 @@ def track_usage(email, level):
     elif plan == "twenty":
         usage_count["total"] += 1
         usage_count[level] += 1
-    save_users()
+    mark_users_dirty()
 
 def get_local_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -939,7 +959,7 @@ def check_theme():
         session['theme'] = theme
         if "user" in session:
             users[session["user"]]["theme"] = theme
-            save_users()
+            mark_users_dirty()
     elif "theme" not in session:
         if "user" in session and "theme" in users[session["user"]]:
             session["theme"] = users[session["user"]]["theme"]
@@ -964,7 +984,7 @@ def set_theme(theme):
     session['theme'] = theme
     if "user" in session:
         users[session["user"]]["theme"] = theme
-        save_users()
+        mark_users_dirty()
     flash(f"Theme changed to {theme}", "success")
     return redirect(request.referrer or "/")
 
@@ -989,7 +1009,7 @@ def index_get():
             flash("Your monthly subscription has expired. Please choose a new plan.", "warning")
             user_data.pop("plan", None)
             user_data.pop("plan_start", None)
-            save_users()
+            mark_users_dirty()
             return redirect("/choose_plan")
     if user_data["plan"] == "free":
         usage_count = user_data.setdefault("usage_count", {"easy": 0, "intermediate": 0, "hard": 0, "very hard": 0, "expert": 0, "total": 0})
@@ -1080,7 +1100,7 @@ def choose_plan():
             return render_template_string(choose_plan_template, session=session, free_disabled=True)
         user_data["plan"] = plan
         user_data.setdefault("usage_count", {"easy": 0, "intermediate": 0, "hard": 0, "very hard": 0, "expert": 0, "total": 0})
-        save_users()
+        mark_users_dirty()
         flash("Plan successfully saved.", "success")
         return redirect("/")
     return render_template_string(choose_plan_template, session=session, free_disabled=free_disabled)
@@ -1127,7 +1147,7 @@ def update_activation_after_payment(plan):
         activation_id = f"{email}_{birth_date}_{now_str}"
         user_data["plan"] = "twenty"
         user_data["activation_id"] = activation_id
-    save_users()
+    mark_users_dirty()
 
 # ------------------------------
 # Intégration avec PayPal
@@ -1420,10 +1440,11 @@ def login_route():
                     users[email]["remember_token"] = token
                     expires = datetime.now() + timedelta(days=30)
                     resp.set_cookie("remember_token", token, expires=expires)
+                    mark_users_dirty()
                 else:
                     resp.set_cookie("remember_token", "", expires=0)
                     users[email].pop("remember_token", None)
-                save_users()
+                    mark_users_dirty()
                 return resp
         flash("Invalid credentials.", "danger")
     return render_template_string(login_template, session=session)
@@ -1434,11 +1455,11 @@ def logout_route():
         email = session["user"]
         if email in users:
             users[email].pop("remember_token", None)
+            mark_users_dirty()
     session.pop("user", None)
     flash("Logged out.", "info")
     resp = make_response(redirect("/login"))
     resp.set_cookie("remember_token", "", expires=0)
-    save_users()
     return resp
 
 @app.route("/register", methods=["GET", "POST"])
@@ -1462,7 +1483,7 @@ def register_route():
                         "birth_place": birth_place,
                         "father_name": father,
                         "mother_name": mother}
-        save_users()
+        mark_users_dirty()
         flash("Account created successfully!", "success")
         return redirect("/login")
     return render_template_string(register_template, session=session)
@@ -1484,7 +1505,7 @@ def forgot_password_route():
         user_data = users[email]
         if user_data["father_name"] == father and user_data["mother_name"] == mother:
             user_data["password"] = hash_password(new_pw)
-            save_users()
+            mark_users_dirty()
             flash("Password reset successfully!", "success")
             return redirect("/login")
         else:
@@ -1509,7 +1530,7 @@ def change_password_route():
             flash("New passwords do not match.", "warning")
             return render_template_string(change_template, session=session)
         user_data["password"] = hash_password(new_pw)
-        save_users()
+        mark_users_dirty()
         flash("Password changed successfully!", "success")
         return redirect("/")
     return render_template_string(change_template, session=session)
