@@ -15,10 +15,13 @@ from datetime import datetime, timedelta
 from flask import Flask, request, render_template_string, send_file, url_for, session, redirect, flash, make_response
 from fpdf import FPDF
 
+# Configuration du logger
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # -------------------------------------------------------------------------------
 # CONFIGURATION GOOGLE DRIVE AVEC UN COMPTE DE SERVICE
 # -------------------------------------------------------------------------------
-# Données intégrées du fichier credentials.json (exemple pour OAuth, à utiliser si besoin)
 GOOGLE_CREDENTIALS_INFO = {
     "web": {
         "client_id": "876431230942-r2r8j8dkoucdv5be64vbh5ntc39trgdm.apps.googleusercontent.com",
@@ -49,6 +52,7 @@ SERVICE_ACCOUNT_INFO = {
 SCOPES = ['https://www.googleapis.com/auth/drive']
 
 def get_drive_service():
+    # Utilise les données intégrées au lieu de lire un fichier
     from google.oauth2.service_account import Credentials
     from googleapiclient.discovery import build
     creds = Credentials.from_service_account_info(SERVICE_ACCOUNT_INFO, scopes=SCOPES)
